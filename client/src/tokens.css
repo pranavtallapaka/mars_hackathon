@@ -1,0 +1,30 @@
+/* Shared design tokens (direction C, survey map) for the landing page and mission control.
+   Colors carry one meaning everywhere: blue is the plan or signal, amber is a hazard or
+   escalation, grey is delayed data. See docs/frontend_design.md. */
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow-condensed/500.css';
+@import '@fontsource/barlow-condensed/600.css';
+
+:root {
+  --paper: #eef0ee;
+  --sheet: #f7f8f7;
+  --ink: #22272b;
+  --relief: #8c9194;
+  --ink-2: #5f6569;
+  --plot: #2554c7;
+  --plot-tint: rgba(37, 84, 199, 0.08);
+  --hazard: #d9831a;
+  --hazard-text: #a35e0c;
+  --hazard-tint: rgba(217, 131, 26, 0.1);
+  --stale: #b5b9bb;
+
+  --terrain: #f9faf9;
+  --terrain-rock: #a9aeb1;
+  --rule: #c9cdcf;
+
+  --font-body: 'Barlow', 'Public Sans', system-ui, sans-serif;
+  --font-label: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --radius: 3px;
+}

@@ -18,7 +18,7 @@ export function LogPanel({ title, entries, max = 8 }: LogPanelProps) {
         <ul>
           {recent.map((e, i) => (
             <li key={entries.length - i}>
-              <span className="mono muted">{formatClock(e.t)}</span> {e.text}
+              <span className="data muted">{formatClock(e.t)}</span> {e.text}
             </li>
           ))}
         </ul>

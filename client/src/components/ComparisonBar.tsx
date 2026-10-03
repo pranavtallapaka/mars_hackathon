@@ -25,7 +25,7 @@ export function ComparisonBar({ baseline, ours }: ComparisonBarProps) {
     <section className="compare">
       <div>
         <h3>Baseline</h3>
-        <span className="mono">{finish(baseline)}</span>
+        <span className="data">{finish(baseline)}</span>
       </div>
       <div className="verdict">
         {bothDone ? (
@@ -46,7 +46,7 @@ export function ComparisonBar({ baseline, ours }: ComparisonBarProps) {
       </div>
       <div className="right">
         <h3>Ours</h3>
-        <span className="mono">{finish(ours)}</span>
+        <span className="data">{finish(ours)}</span>
       </div>
     </section>
   );

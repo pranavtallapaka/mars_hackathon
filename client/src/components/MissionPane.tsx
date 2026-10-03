@@ -27,7 +27,7 @@ export function Counters({ sim }: { sim: Sim }) {
       <div className="big">
         <dt>Mission time</dt>
         <dd className={m.complete ? 'good' : ''}>
-          {Math.floor(m.missionMin)} min{m.complete ? ' ✓' : ''}
+          {Math.floor(m.missionMin)} min{m.complete ? ' · done' : ''}
         </dd>
       </div>
       <div className="big">

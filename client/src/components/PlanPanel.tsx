@@ -20,8 +20,8 @@ export function PlanSteps({ plan, activeStepId = null }: { plan: Plan; activeSte
       {plan.steps.map((step) => (
         <li key={step.id} className={step.id === activeStepId ? 'active' : ''}>
           <div className="step-line">
-            <span className="mono step-id">{step.id}</span>
-            <span className="mono">{describeStep(step)}</span>
+            <span className="data step-id">{step.id}</span>
+            <span className="data">{describeStep(step)}</span>
             {step.irreversible && (
               <span className={step.approved ? 'chip warn' : 'chip bad'}>
                 irreversible{step.approved ? ' · approved' : ' · NOT approved'}
@@ -31,7 +31,7 @@ export function PlanSteps({ plan, activeStepId = null }: { plan: Plan; activeSte
           {step.branches.length > 0 && (
             <div className="branches">
               {step.branches.map((b) => (
-                <span key={b.if} className="mono">
+                <span key={b.if} className="data">
                   if {b.if} → {b.then}
                 </span>
               ))}
@@ -75,7 +75,7 @@ export function PlanPanel({ sim, plan, knownStepId }: PlanPanelProps) {
       <ol className="uplinks">
         {sim.ground.uplinks.map((u, i) => (
           <li key={`${u.planId}-${u.version}`} className="muted small">
-            <span className="mono">#{i + 1}</span> v{u.version} sent {formatClock(u.sentAt)} · {u.bytes} B ·{' '}
+            <span className="data">#{i + 1}</span> v{u.version} sent {formatClock(u.sentAt)} · {u.bytes} B ·{' '}
             {uplinkStatus(u, sim.now)}
           </li>
         ))}

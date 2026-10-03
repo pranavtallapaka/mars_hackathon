@@ -60,7 +60,7 @@ export function EscalationView({
           const chosen = pending?.optionId === o.id;
           const body = (
             <>
-              <span className="mono">{o.id}</span> <span className="label">{o.label}</span>
+              <span className="data">{o.id}</span> <span className="label">{o.label}</span>
               <span className={`chip risk-${o.risk}`}>{o.risk} risk</span>
               <span className="muted small">{o.costMin} min</span>
               {rec && <span className="chip rec">recommended</span>}

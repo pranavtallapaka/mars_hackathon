@@ -19,7 +19,7 @@ function describePayload(payload: Uplink | Downlink): string {
     case 'telemetry':
       return `status ${formatClock(payload.state.simTime)}`;
     case 'escalation':
-      return `ESCALATION ${payload.packet.stepId}`;
+      return `escalation ${payload.packet.stepId}`;
   }
 }
 
@@ -59,7 +59,7 @@ export function LinkPanel({ sim, compact = false }: { sim: Sim; compact?: boolea
               const frac = Math.min(1, Math.max(0, (now - m.sentAt) / (m.deliverAt - m.sentAt)));
               const left = lane.dir === 'up' ? frac : 1 - frac;
               return (
-                <div key={m.id} className={`packet row-${i % 3}`} style={{ left: `${left * 100}%` }}>
+                <div key={m.id} className={`packet row-${i % 3} kind-${m.payload.kind}`} style={{ left: `${left * 100}%` }}>
                   <span className="packet-dot" />
                   <span className="packet-label">
                     {describePayload(m.payload)}

@@ -109,7 +109,7 @@ export function IntentPanel({ started, checkPlan, onApprove }: IntentPanelProps)
         <div className="preview">
           <div className="preview-head">
             <h3>Plan preview · {plan.planId} v{plan.version}</h3>
-            <span className={`chip ${preview.source === 'staged' ? 'bad' : preview.source === 'cached' ? 'warn' : 'source-grok'}`}>
+            <span className={`chip ${preview.source === 'staged' ? 'bad' : preview.source === 'cached' ? '' : 'source-grok'}`}>
               {SOURCE_LABEL[preview.source]}
             </span>
           </div>

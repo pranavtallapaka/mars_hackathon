@@ -4,10 +4,11 @@ Oct 3, 2026 · @Pt
 
 ## Status
 
-Exploring. No visual direction is chosen yet; three options are below with a recommendation. Product design decisions live in the main design doc; this doc covers only how the product looks and how people get into it.
+Direction chosen: **C, Survey map**. Mission control is restyled to its tokens before Batch 6; the landing page itself is built in Batch 8. Product design decisions live in the main design doc; this doc covers only how the product looks and how people get into it.
 
 | Date | Change | Note |
 | --- | --- | --- |
+| 2026-10-03 | Chose direction C, kept the name, picked the headline | Added text-safe grey and amber after a contrast check; mission control restyled to the tokens |
 | 2026-10-03 | Scheduled frontend work | Direction, name and tokens after Batch 5 (before Batch 6); hero and sections in Batch 8 |
 | 2026-10-03 | Doc started | Goals: professional, fits the product, does not look AI-generated |
 
@@ -51,7 +52,7 @@ Generated pages look generic because their choices could belong to any product. 
 
 ## Visual directions
 
-**Recommendation: C, Survey map.** It is built from real Mars data, matches how rover planners actually work (on maps), and is the least likely to look like any other hackathon project. Pick one; tokens below are proposals until chosen.
+**Chosen: C, Survey map.** It is built from real Mars data, matches how rover planners actually work (on maps), and is the least likely to look like any other hackathon project.
 
 |  | A. Flight operations console | B. Engineering report | C. Survey map (recommended) |
 | --- | --- | --- | --- |
@@ -60,18 +61,20 @@ Generated pages look generic because their choices could belong to any product. 
 | Strength | Instantly reads as "mission control" | Very credible, very calm | Real data is the visual; unique to this product |
 | Risk | Dark UI + single bright accent + monospace labels is a common generated look | Can feel dry; red accent edges toward clichés | Imagery must be prepared (ties into Stretch S1) |
 
-### C. Survey map: proposed tokens
+### C. Survey map: tokens
 
 | Token | Hex | Use |
 | --- | --- | --- |
 | Survey paper | #EEF0EE | Page background (cool, not cream) |
 | Basalt ink | #22272B | Text, rules |
-| Relief grey | #8C9194 | Contours, secondary text, terrain |
+| Relief grey | #8C9194 | Contours, terrain, borders (not text: 2.8:1 on paper) |
+| Secondary ink | #5F6569 | Secondary text, captions, stale-data labels |
 | Plot blue | #2554C7 | The plan: routes, links, primary button, signal pulse |
-| Hazard amber | #D9831A | Only hazards, no-go zones and escalations, everywhere |
-| Stale grey | #B5B9BB | Data that is "as of N minutes ago" |
+| Hazard amber | #D9831A | Only hazards, no-go zones and escalations, everywhere (fills and strokes) |
+| Hazard text | #A35E0C | Amber used as text (the fill amber is 2.5:1 on paper) |
+| Stale grey | #B5B9BB | Fills and tints for data that is "as of N minutes ago" (not text; too faint for thin marks on light terrain, so the map ghost uses a dashed secondary-ink ring) |
 
-Type: **Barlow** for everything (derived from California highway signage; reads as wayfinding and maps), with **Barlow Condensed** for map labels and coordinates. Use tabular figures for all live numbers. Verify tabular-figure support before committing; fallback is Public Sans.
+Type: **Barlow** for everything (derived from California highway signage; reads as wayfinding and maps), with **Barlow Condensed** for map labels and coordinates. Use tabular figures for all live numbers. Fonts are self-hosted so venue wifi cannot break them.
 
 Layout: left-aligned, map-like. Text sits in a narrow column over or beside full-bleed terrain; captions behave like map legends, with a real scale bar and coordinates where they mean something.
 
@@ -83,7 +86,7 @@ The one bold thing on the page. A to-scale line from Earth to Mars, with a sente
 
 > A command sent now reaches Jezero crater in 11 min 42 s.
 
-The number updates every second (tabular figures, so it doesn't jitter). On load, one signal pulse travels the line at proportional speed. That is the page's only automatic motion. It uses the same ephemeris code as Stretch S1, so it is real data, not decoration.
+The number updates every second (tabular figures, so it doesn't jitter). On load, one signal pulse travels the line on the product's own clock (1 real second = 1 sim minute), so it crosses in about as many seconds as the light-time has minutes and teaches the demo's time compression. That is the page's only automatic motion. It uses the same ephemeris code as Stretch S1, so it is real data, not decoration.
 
 ### Sections, top to bottom
 
@@ -144,7 +147,7 @@ Dependencies: the live light-time line needs the ephemeris calculation from Stre
 
 **Open questions**
 
-- [ ] Pick a visual direction (A, B or C)
-- [ ] Product name: the project doesn't have one yet, and the hero needs it
-- [ ] Headline choice
+- [x] Pick a visual direction: C, Survey map
+- [x] Product name: keep "Mars Latency Mediation" for now
+- [x] Headline: "We can't beat the speed of light. We can stop waiting on it." The live light-time sentence below it carries the number, so the headline never goes stale.
 - [ ] Use the free .Tech domain from MLH for the link judges open?
