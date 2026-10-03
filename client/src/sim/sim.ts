@@ -185,12 +185,13 @@ export class Sim {
     };
   }
 
-  /** Uplinks the demo mission: the contingency plan, or its no-contingency sequence for the baseline. */
-  start(): SendResult {
-    const plan = this.planSchema.parse(DEMO_PLAN);
-    if (this.mode === 'contingency') return this.sendPlan(plan);
-    this.shadowPlan = plan;
-    return this.sendPlan(toConventional(plan, nominalFlow(plan), BASELINE_PLAN_ID, 1));
+  /** Uplinks the approved mission: the contingency plan, or the same steps with no contingencies for the baseline. */
+  start(input: unknown = DEMO_PLAN): SendResult {
+    if (this.mode === 'contingency') return this.sendPlan(input);
+    const parsed = this.planSchema.safeParse(input);
+    if (!parsed.success) return this.sendPlan(input);
+    this.shadowPlan = parsed.data;
+    return this.sendPlan(toConventional(parsed.data, nominalFlow(parsed.data), BASELINE_PLAN_ID, 1));
   }
 
   /** Ground boundary: only a schema-valid plan is uplinked. */

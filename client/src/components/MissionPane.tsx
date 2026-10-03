@@ -100,7 +100,7 @@ export function MissionPane({ sim }: { sim: Sim }) {
       {ground.currentPlan ? (
         <PlanPanel sim={sim} plan={ground.currentPlan} knownStepId={known.stepId} />
       ) : (
-        <p className="muted">No plan uplinked yet. Press Start mission.</p>
+        <p className="muted">No plan uplinked yet. Compile an intent and approve the preview.</p>
       )}
       <LinkPanel sim={sim} compact />
       <LogPanel title="Ground log" entries={sim.groundLog} max={6} />

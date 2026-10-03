@@ -14,6 +14,48 @@ function uplinkStatus(u: SentPlan, now: number): string {
   }
 }
 
+export function PlanSteps({ plan, activeStepId = null }: { plan: Plan; activeStepId?: string | null }) {
+  return (
+    <ol className="steps">
+      {plan.steps.map((step) => (
+        <li key={step.id} className={step.id === activeStepId ? 'active' : ''}>
+          <div className="step-line">
+            <span className="mono step-id">{step.id}</span>
+            <span className="mono">{describeStep(step)}</span>
+            {step.irreversible && (
+              <span className={step.approved ? 'chip warn' : 'chip bad'}>
+                irreversible{step.approved ? ' · approved' : ' · NOT approved'}
+              </span>
+            )}
+          </div>
+          {step.branches.length > 0 && (
+            <div className="branches">
+              {step.branches.map((b) => (
+                <span key={b.if} className="mono">
+                  if {b.if} → {b.then}
+                </span>
+              ))}
+            </div>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function PlanLimits({ plan }: { plan: Plan }) {
+  const { limits } = plan;
+  return (
+    <dl className="limits">
+      <div><dt>Battery floor</dt><dd>{limits.batteryFloorPct}%</dd></div>
+      <div><dt>No-go</dt><dd>{limits.noGoZones.join(', ') || 'none'}</dd></div>
+      <div><dt>Escalate when</dt><dd>{plan.escalateWhen.join(', ') || 'any surprise'}</dd></div>
+      <div><dt>Abort means</dt><dd>{plan.abort.behavior} → {plan.abort.to}</dd></div>
+      <div><dt>While waiting</dt><dd>{plan.whileWaiting.join(', ') || 'nothing'}</dd></div>
+    </dl>
+  );
+}
+
 interface PlanPanelProps {
   sim: Sim;
   plan: Plan;
@@ -22,8 +64,6 @@ interface PlanPanelProps {
 }
 
 export function PlanPanel({ sim, plan, knownStepId }: PlanPanelProps) {
-  const { limits } = plan;
-
   return (
     <div className="plan">
       <div className="plan-head">
@@ -40,38 +80,8 @@ export function PlanPanel({ sim, plan, knownStepId }: PlanPanelProps) {
           </li>
         ))}
       </ol>
-
-      <ol className="steps">
-        {plan.steps.map((step) => (
-          <li key={step.id} className={step.id === knownStepId ? 'active' : ''}>
-            <div className="step-line">
-              <span className="mono step-id">{step.id}</span>
-              <span className="mono">{describeStep(step)}</span>
-              {step.irreversible && (
-                <span className={step.approved ? 'chip warn' : 'chip bad'}>
-                  irreversible{step.approved ? ' · approved' : ' · NOT approved'}
-                </span>
-              )}
-            </div>
-            {step.branches.length > 0 && (
-              <div className="branches">
-                {step.branches.map((b) => (
-                  <span key={b.if} className="mono">
-                    if {b.if} → {b.then}
-                  </span>
-                ))}
-              </div>
-            )}
-          </li>
-        ))}
-      </ol>
-
-      <dl className="limits">
-        <div><dt>Battery floor</dt><dd>{limits.batteryFloorPct}%</dd></div>
-        <div><dt>No-go</dt><dd>{limits.noGoZones.join(', ') || 'none'}</dd></div>
-        <div><dt>Escalate when</dt><dd>{plan.escalateWhen.join(', ') || 'any surprise'}</dd></div>
-        <div><dt>While waiting</dt><dd>{plan.whileWaiting.join(', ') || 'nothing'}</dd></div>
-      </dl>
+      <PlanSteps plan={plan} activeStepId={knownStepId} />
+      <PlanLimits plan={plan} />
     </div>
   );
 }

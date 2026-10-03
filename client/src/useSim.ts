@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useState } from 'react';
+import type { Plan } from '../../shared/plan';
 import { SimClock } from './sim/clock';
 import { Sim } from './sim/sim';
 
@@ -33,10 +34,13 @@ export function useSim() {
   }, [engine]);
 
   const reset = useCallback(() => setEngine(createEngine()), []);
-  const start = useCallback(() => {
-    engine.baseline.start();
-    engine.ours.start();
-  }, [engine]);
+  const start = useCallback(
+    (plan: Plan) => {
+      engine.baseline.start(plan);
+      engine.ours.start(plan);
+    },
+    [engine],
+  );
 
   return { ...engine, started: engine.ours.startedAt !== null, start, reset };
 }

@@ -8,6 +8,7 @@ interface ComparisonBarProps {
 
 function finish(sim: Sim): string {
   const { completedAt, confirmedAt } = sim.metrics;
+  if (sim.startedAt === null) return 'not started';
   if (completedAt === null) return 'in progress';
   return `done ${formatClock(completedAt)}${confirmedAt === null ? '' : ` · Earth knows ${formatClock(confirmedAt)}`}`;
 }
@@ -39,7 +40,7 @@ export function ComparisonBar({ baseline, ours }: ComparisonBarProps) {
           </>
         ) : (
           <span className="muted">
-            {o.roundTrips === 0 ? 'Start the mission to run both systems on the same clock.' : 'Running both systems on the same clock…'}
+            {o.roundTrips === 0 ? 'Approve a plan to run both systems on the same clock.' : 'Running both systems on the same clock…'}
           </span>
         )}
       </div>

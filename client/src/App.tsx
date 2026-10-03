@@ -1,6 +1,7 @@
 import { ClockBar } from './components/ClockBar';
 import { ComparisonBar } from './components/ComparisonBar';
 import { HealthBadge } from './components/HealthBadge';
+import { IntentPanel } from './components/IntentPanel';
 import { MapLegend } from './components/MapGrid';
 import { MissionPane } from './components/MissionPane';
 import { useSim } from './useSim';
@@ -18,7 +19,8 @@ export default function App() {
         <HealthBadge />
       </header>
 
-      <ClockBar clock={clock} delayMin={ours.link.oneWayDelayMin} onReset={reset} started={started} onStart={start} />
+      <ClockBar clock={clock} delayMin={ours.link.oneWayDelayMin} onReset={reset} />
+      <IntentPanel started={started} onApprove={start} />
       <ComparisonBar baseline={baseline} ours={ours} />
       <MapLegend />
 

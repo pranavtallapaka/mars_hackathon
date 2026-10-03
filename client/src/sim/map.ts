@@ -1,3 +1,4 @@
+import { MARS_DEMO_BRIEFING } from '../../../shared/missions/mars-demo';
 import { findPath } from './grid';
 import { mulberry32 } from './rng';
 import type { CellType, Feature, NoGoZone, SimMap, Vec } from './types';
@@ -8,19 +9,9 @@ const ROCK_DENSITY = 0.12;
 const MAX_ATTEMPTS = 100;
 
 // Named features are fixed so the scripted mission is stable; only rock scatter is seeded.
-const ROVER_START: Vec = { x: 2, y: 13 };
-
-const FEATURES: Feature[] = [
-  { id: 'wp-home', kind: 'waypoint', label: 'Landing site', tag: 'H', pos: { ...ROVER_START } },
-  { id: 'wp-A', kind: 'waypoint', label: 'Approach to outcrop', tag: 'A', pos: { x: 16, y: 5 } },
-  { id: 'wp-A-alt', kind: 'waypoint', label: 'Alternate approach', tag: "A'", pos: { x: 14, y: 9 } },
-  { id: 'wp-B', kind: 'waypoint', label: 'West ridge', tag: 'B', pos: { x: 4, y: 3 } },
-  { id: 'wp-C', kind: 'waypoint', label: 'South flats', tag: 'C', pos: { x: 19, y: 12 } },
-  { id: 'outcrop-1', kind: 'target', label: 'Layered outcrop', tag: 'O1', pos: { x: 20, y: 2 } },
-  { id: 'outcrop-2', kind: 'target', label: 'Secondary outcrop', tag: 'O2', pos: { x: 21, y: 6 } },
-];
-
-const NO_GO_ZONES: NoGoZone[] = [{ id: 'sand-1', label: 'Sand', rect: { x: 7, y: 5, w: 5, h: 5 } }];
+const ROVER_START: Vec = MARS_DEMO_BRIEFING.roverStart;
+const FEATURES: Feature[] = MARS_DEMO_BRIEFING.features;
+const NO_GO_ZONES: NoGoZone[] = MARS_DEMO_BRIEFING.noGoZones;
 
 export function generateMap(seed: number): SimMap {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {

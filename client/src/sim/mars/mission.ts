@@ -1,4 +1,4 @@
-import demoPlanJson from '../../../../shared/missions/mars-demo.plan.json';
+import { CACHED_DEMO_PLAN } from '../../../../shared/missions/mars-demo';
 import { featureById, findPath } from '../grid';
 import type { SimMap, Vec } from '../types';
 
@@ -16,7 +16,7 @@ export interface MarsMission {
   sites: Record<string, SiteProps>;
 }
 
-export const DEMO_PLAN: unknown = demoPlanJson;
+export const DEMO_PLAN: unknown = CACHED_DEMO_PLAN;
 
 // Fraction along the route to wp-A where the staged boulder sits.
 const BOULDER_ROUTE_FRACTION = 0.6;

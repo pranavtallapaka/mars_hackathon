@@ -7,21 +7,17 @@ interface ClockBarProps {
   clock: SimClock;
   delayMin: number;
   onReset: () => void;
-  started: boolean;
-  onStart: () => void;
 }
 
-export function ClockBar({ clock, delayMin, onReset, started, onStart }: ClockBarProps) {
+export function ClockBar({ clock, delayMin, onReset }: ClockBarProps) {
   return (
     <div className="clockbar">
       <div className="clock">
         <span className="label">Sim clock</span>
         <span className="value">{formatClock(clock.now)}</span>
       </div>
-      <button className="primary" disabled={started} onClick={onStart}>
-        {started ? 'Mission running' : 'Start mission'}
-      </button>
       <button
+        className="primary"
         onClick={() => {
           clock.paused = !clock.paused;
         }}
