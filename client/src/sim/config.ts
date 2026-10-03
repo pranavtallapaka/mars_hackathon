@@ -9,6 +9,9 @@ export const DEFAULT_ONE_WAY_DELAY_MIN = 8;
 
 export const TELEMETRY_PERIOD_MIN = 5;
 
+// Same human think time on both panes, so only the system differs.
+export const OPERATOR_DECISION_MIN = 5;
+
 export const CELL_METERS = 2;
 export const SENSE_RANGE_CELLS = 2;
 

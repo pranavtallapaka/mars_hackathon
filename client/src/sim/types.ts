@@ -59,4 +59,5 @@ export type Uplink = { kind: 'plan'; plan: Plan };
 export type Downlink =
   | { kind: 'ack'; planId: string; version: number; ok: boolean; reason?: string; state: RoverSnapshot }
   | { kind: 'telemetry'; state: RoverSnapshot }
-  | { kind: 'escalation'; packet: EscalationPacket; state: RoverSnapshot };
+  /** `condition` is link metadata (like a fault code); the packet itself stays exactly the §3 schema. */
+  | { kind: 'escalation'; packet: EscalationPacket; condition: string | null; state: RoverSnapshot };

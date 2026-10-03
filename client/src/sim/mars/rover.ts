@@ -19,6 +19,7 @@ import type { ConditionEvent, EscalationContext, ScenarioRuntime, StepEvent, Ste
 import { cellAt, cellIndex, featureById, findPath, samePos, zoneAt } from '../grid';
 import type { Feature, SimMap, Vec } from '../types';
 import type { MarsMission } from './mission';
+import { optionLabel, type MarsOptionIntent } from './options';
 
 const EPS = 1e-9;
 
@@ -72,7 +73,8 @@ export class MarsRover implements ScenarioRuntime {
     private readonly mission: MarsMission,
   ) {
     this.pos = { ...map.roverStart };
-    this.lastSafeWaypoint = { id: 'start', pos: { ...map.roverStart } };
+    const home = map.features.find((f) => f.kind === 'waypoint' && samePos(f.pos, map.roverStart));
+    this.lastSafeWaypoint = { id: home?.id ?? 'start', pos: { ...map.roverStart } };
     this.hidden = new Set(mission.hiddenObstacles.map((p) => cellIndex(map, p)));
   }
 
@@ -227,7 +229,7 @@ export class MarsRover implements ScenarioRuntime {
     const low = this.batteryCheck(minutes * DRILL_PCT_PER_MIN, `drill ${site.id}`, plan);
     if (low) return low;
 
-    const stallCm = this.mission.sites[site.id]?.drillStallCm;
+    const stallCm = step.args.force === 'high' ? undefined : this.mission.sites[site.id]?.drillStallCm;
     this.activity = `drilling ${site.id}`;
     let depth = 0;
     const run: StepRun = {
@@ -253,6 +255,7 @@ export class MarsRover implements ScenarioRuntime {
     this.activity = `collecting sample at ${site.id}`;
     const run = new TimedRun(this, SAMPLE_MIN, SAMPLE_PCT_PER_MIN, () => {
       this.samplesCollected++;
+      this.activity = `sample stowed (${site.id})`;
       return { type: 'done', note: `sample collected at ${site.id}` };
     });
     return { type: 'started', run, note: `${SAMPLE_MIN} min` };
@@ -361,12 +364,14 @@ export class MarsRover implements ScenarioRuntime {
     condition: string | null,
   ): { options: Option[]; recommendation: string } {
     const back = this.lastSafeWaypoint;
-    const returnOpt = (id: string): Option => ({
+    const opt = (id: string, intent: MarsOptionIntent, risk: Option['risk'], costMin: number): Option => ({
       id,
-      label: `Abort and return to ${back.id}`,
-      risk: 'low',
-      costMin: this.routeMinutes(back.pos),
+      label: optionLabel(intent),
+      risk,
+      costMin,
     });
+    const returnOpt = (id: string) =>
+      opt(id, { kind: 'return_to', waypoint: back.id }, 'low', this.routeMinutes(back.pos));
 
     if (condition === 'rock_too_hard') {
       const site = String(step.args.site ?? '');
@@ -376,11 +381,11 @@ export class MarsRover implements ScenarioRuntime {
       const drillMin = Number(step.args.depthCm ?? DEFAULT_DRILL_DEPTH_CM) / DRILL_CM_PER_MIN;
       const options: Option[] = [];
       if (alt) {
-        options.push({ id: 'o1', label: `Drill alternate site ${alt.id}`, risk: 'low', costMin: this.routeMinutes(alt.pos) + drillMin });
+        options.push(opt('o1', { kind: 'alt_site', site: alt.id }, 'low', this.routeMinutes(alt.pos) + IMAGE_MIN + drillMin + SAMPLE_MIN));
       }
       options.push(
-        { id: 'o2', label: 'Collect loose surface sample instead', risk: 'low', costMin: SAMPLE_MIN + 5 },
-        { id: 'o3', label: 'Retry with higher drill force', risk: 'medium', costMin: 20 },
+        opt('o2', { kind: 'surface_sample' }, 'low', SAMPLE_MIN),
+        opt('o3', { kind: 'retry_drill' }, 'medium', drillMin + SAMPLE_MIN),
       );
       return { options, recommendation: options[0].id };
     }
@@ -388,8 +393,8 @@ export class MarsRover implements ScenarioRuntime {
     if (condition === null) {
       return {
         options: [
-          { id: 'o1', label: `Approve ${step.id} (${step.action}) and proceed`, risk: 'medium', costMin: 0 },
-          { id: 'o2', label: `Skip ${step.id} and continue the plan`, risk: 'low', costMin: 0 },
+          opt('o1', { kind: 'approve_step', stepId: step.id, action: step.action }, 'medium', 0),
+          opt('o2', { kind: 'skip_step', stepId: step.id }, 'low', 0),
           returnOpt('o3'),
         ],
         recommendation: 'o2',
@@ -398,16 +403,16 @@ export class MarsRover implements ScenarioRuntime {
 
     if (condition === 'battery_below_floor') {
       return {
-        options: [returnOpt('o1'), { id: 'o2', label: 'Hold in place and recharge', risk: 'low', costMin: 60 }],
+        options: [returnOpt('o1'), opt('o2', { kind: 'recharge' }, 'low', 60)],
         recommendation: 'o1',
       };
     }
 
     return {
       options: [
-        { id: 'o1', label: `Skip ${step.id} and continue the plan`, risk: 'low', costMin: 0 },
+        opt('o1', { kind: 'skip_step', stepId: step.id }, 'low', 0),
         returnOpt('o2'),
-        { id: 'o3', label: 'Hold for a revised plan', risk: 'low', costMin: 0 },
+        opt('o3', { kind: 'hold_for_plan' }, 'low', 0),
       ],
       recommendation: 'o3',
     };

@@ -23,7 +23,7 @@ function describePayload(payload: Uplink | Downlink): string {
   }
 }
 
-export function LinkPanel({ sim }: { sim: Sim }) {
+export function LinkPanel({ sim, compact = false }: { sim: Sim; compact?: boolean }) {
   const { link, now } = sim;
   const lanes: Lane[] = [
     {
@@ -41,7 +41,7 @@ export function LinkPanel({ sim }: { sim: Sim }) {
   ];
 
   return (
-    <section className="link">
+    <section className={compact ? 'link compact' : 'link'}>
       <div className="link-ends">
         <span>Earth · mission control</span>
         <span>Mars · rover</span>
@@ -62,7 +62,8 @@ export function LinkPanel({ sim }: { sim: Sim }) {
                 <div key={m.id} className={`packet row-${i % 3}`} style={{ left: `${left * 100}%` }}>
                   <span className="packet-dot" />
                   <span className="packet-label">
-                    {describePayload(m.payload)} · {m.bytes} B · {formatMin(m.deliverAt - now)}
+                    {describePayload(m.payload)}
+                    {compact ? '' : ` · ${m.bytes} B · ${formatMin(m.deliverAt - now)}`}
                   </span>
                 </div>
               );

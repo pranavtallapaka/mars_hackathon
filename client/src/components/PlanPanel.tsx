@@ -6,9 +6,9 @@ import type { SentPlan, Sim } from '../sim/sim';
 function uplinkStatus(u: SentPlan, now: number): string {
   switch (u.status) {
     case 'in_flight':
-      return now < u.arrivesAt ? `uplink in flight, arrives in ${formatMin(u.arrivesAt - now)}` : 'delivered, awaiting ack';
+      return now < u.arrivesAt ? `in flight, arrives in ${formatMin(u.arrivesAt - now)}` : 'delivered, awaiting ack';
     case 'accepted':
-      return `loaded by rover at ${formatClock(u.roverReceivedAt!)}, ack received ${formatClock(u.ackReceivedAt!)}`;
+      return `loaded ${formatClock(u.roverReceivedAt!)}, ack ${formatClock(u.ackReceivedAt!)}`;
     case 'rejected':
       return `rejected by rover: ${u.reason}`;
   }
@@ -22,21 +22,24 @@ interface PlanPanelProps {
 }
 
 export function PlanPanel({ sim, plan, knownStepId }: PlanPanelProps) {
-  const uplink = sim.ground.uplinks.find((u) => u.planId === plan.planId && u.version === plan.version);
   const { limits } = plan;
 
   return (
     <div className="plan">
       <div className="plan-head">
         <h3>
-          Plan {plan.planId} v{plan.version}
+          Current plan · {plan.planId} v{plan.version}
         </h3>
-        <button className="primary" disabled={Boolean(uplink)} onClick={() => sim.sendPlan(plan)}>
-          {uplink ? 'Uplinked' : 'Uplink plan'}
-        </button>
       </div>
       <p className="intent">“{plan.intent}”</p>
-      {uplink && <p className="muted small">{uplinkStatus(uplink, sim.now)}</p>}
+      <ol className="uplinks">
+        {sim.ground.uplinks.map((u, i) => (
+          <li key={`${u.planId}-${u.version}`} className="muted small">
+            <span className="mono">#{i + 1}</span> v{u.version} sent {formatClock(u.sentAt)} · {u.bytes} B ·{' '}
+            {uplinkStatus(u, sim.now)}
+          </li>
+        ))}
+      </ol>
 
       <ol className="steps">
         {plan.steps.map((step) => (
@@ -66,8 +69,7 @@ export function PlanPanel({ sim, plan, knownStepId }: PlanPanelProps) {
       <dl className="limits">
         <div><dt>Battery floor</dt><dd>{limits.batteryFloorPct}%</dd></div>
         <div><dt>No-go</dt><dd>{limits.noGoZones.join(', ') || 'none'}</dd></div>
-        <div><dt>Escalate when</dt><dd>{plan.escalateWhen.join(', ') || 'never'}</dd></div>
-        <div><dt>Abort means</dt><dd>{plan.abort.behavior} → {plan.abort.to}</dd></div>
+        <div><dt>Escalate when</dt><dd>{plan.escalateWhen.join(', ') || 'any surprise'}</dd></div>
         <div><dt>While waiting</dt><dd>{plan.whileWaiting.join(', ') || 'nothing'}</dd></div>
       </dl>
     </div>

@@ -11,6 +11,7 @@ const MAX_ATTEMPTS = 100;
 const ROVER_START: Vec = { x: 2, y: 13 };
 
 const FEATURES: Feature[] = [
+  { id: 'wp-home', kind: 'waypoint', label: 'Landing site', tag: 'H', pos: { ...ROVER_START } },
   { id: 'wp-A', kind: 'waypoint', label: 'Approach to outcrop', tag: 'A', pos: { x: 16, y: 5 } },
   { id: 'wp-A-alt', kind: 'waypoint', label: 'Alternate approach', tag: "A'", pos: { x: 14, y: 9 } },
   { id: 'wp-B', kind: 'waypoint', label: 'West ridge', tag: 'B', pos: { x: 4, y: 3 } },

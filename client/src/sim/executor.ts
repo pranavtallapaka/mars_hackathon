@@ -41,7 +41,7 @@ export type ExecutorMode = 'idle' | 'executing' | 'safe_hold' | 'returning' | 'c
 
 export interface ExecutorEvents {
   log(stepId: string | null, text: string): void;
-  escalate(packet: EscalationPacket): void;
+  escalate(packet: EscalationPacket, condition: string | null): void;
   modeChanged(mode: ExecutorMode): void;
 }
 
@@ -49,7 +49,7 @@ export interface ExecutorEvents {
  * Steps reached by a forward goto are contingencies: normal sequential flow skips them,
  * and after one finishes, flow resumes at the next non-contingency step.
  */
-function contingencySteps(plan: Plan): Set<string> {
+export function contingencySteps(plan: Plan): Set<string> {
   const out = new Set<string>();
   plan.steps.forEach((step, i) => {
     for (const b of step.branches) {
@@ -207,7 +207,7 @@ export class Executor {
       return;
     }
     this.escalation = parsed.data;
-    this.events.escalate(parsed.data);
+    this.events.escalate(parsed.data, condition);
   }
 
   private startReturn(): void {

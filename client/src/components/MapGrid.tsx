@@ -9,9 +9,13 @@ interface MapGridProps {
   /** Staged obstacles nobody has seen yet; only shown on the sim-truth view. */
   hidden?: readonly Vec[];
   stale?: boolean;
+  /** Where Earth last heard the rover was, drawn over the true position. */
+  ghost?: Vec;
+  /** Overlay caption, e.g. the staleness of the ghost. */
+  caption?: string;
 }
 
-export function MapGrid({ map, rover, path = [], boulders = [], hidden = [], stale = false }: MapGridProps) {
+export function MapGrid({ map, rover, path = [], boulders = [], hidden = [], stale = false, ghost, caption }: MapGridProps) {
   const key = (p: Vec) => p.y * map.width + p.x;
   const pathCells = new Set(path.map(key));
   const boulderCells = new Set(boulders.map(key));
@@ -20,6 +24,7 @@ export function MapGrid({ map, rover, path = [], boulders = [], hidden = [], sta
 
   return (
     <div className="map" style={{ gridTemplateColumns: `repeat(${map.width}, 1fr)` }}>
+      {caption && <span className="map-caption">{caption}</span>}
       {map.cells.map((cell, i) => {
         const x = i % map.width;
         const y = Math.floor(i / map.width);
@@ -33,6 +38,7 @@ export function MapGrid({ map, rover, path = [], boulders = [], hidden = [], sta
           <div key={i} className={classes.join(' ')} title={feature ? `${feature.id}: ${feature.label}` : undefined}>
             {feature && <span className="tag">{feature.tag}</span>}
             {rover.x === x && rover.y === y && <span className={stale ? 'rover stale' : 'rover'} />}
+            {ghost && ghost.x === x && ghost.y === y && <span className="rover stale" />}
           </div>
         );
       })}
@@ -43,6 +49,8 @@ export function MapGrid({ map, rover, path = [], boulders = [], hidden = [], sta
 export function MapLegend() {
   return (
     <div className="legend">
+      <span><i className="sw rover-live" /> rover (true position)</span>
+      <span><i className="sw rover-ghost" /> rover as Earth last heard</span>
       <span><i className="sw rock" /> rock</span>
       <span><i className="sw sand" /> sand (no-go)</span>
       <span><i className="sw waypoint" /> waypoint</span>

@@ -1,12 +1,21 @@
 import { formatClock } from '../format';
 import type { ReceivedEscalation } from '../sim/sim';
 
-export function EscalationView({ escalation }: { escalation: ReceivedEscalation }) {
+interface EscalationViewProps {
+  escalation: ReceivedEscalation;
+  title?: string;
+  /** When mission control sent its answer, if it has. */
+  answeredAt?: number;
+}
+
+export function EscalationView({ escalation, title = 'Escalation', answeredAt }: EscalationViewProps) {
   const { packet, receivedAt, bytes } = escalation;
   return (
     <div className="escalation">
       <div className="escalation-head">
-        <h3>Escalation · {packet.stepId}</h3>
+        <h3>
+          {title} · {packet.stepId}
+        </h3>
         <span className="muted small">
           sent {formatClock(packet.simTime)} · received {formatClock(receivedAt)} · {bytes} B
         </span>
@@ -32,7 +41,11 @@ export function EscalationView({ escalation }: { escalation: ReceivedEscalation 
           </li>
         ))}
       </ul>
-      <p className="muted small">Rover is in safe hold until it receives a decision.</p>
+      <p className="muted small">
+        {answeredAt === undefined
+          ? 'Rover is in safe hold until it receives a decision.'
+          : `Answered ${formatClock(answeredAt)}; rover was holding until the answer arrived.`}
+      </p>
     </div>
   );
 }
