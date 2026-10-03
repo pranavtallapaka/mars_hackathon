@@ -3,7 +3,13 @@ import type { SimClock } from '../sim/clock';
 
 const SPEEDS = [0.5, 1, 2, 5, 10];
 
-export function ClockBar({ clock, delayMin }: { clock: SimClock; delayMin: number }) {
+interface ClockBarProps {
+  clock: SimClock;
+  delayMin: number;
+  onReset: () => void;
+}
+
+export function ClockBar({ clock, delayMin, onReset }: ClockBarProps) {
   return (
     <div className="clockbar">
       <div className="clock">
@@ -18,6 +24,7 @@ export function ClockBar({ clock, delayMin }: { clock: SimClock; delayMin: numbe
       >
         {clock.paused ? 'Resume' : 'Pause'}
       </button>
+      <button onClick={onReset}>Reset</button>
       <div className="speeds">
         {SPEEDS.map((s) => (
           <button

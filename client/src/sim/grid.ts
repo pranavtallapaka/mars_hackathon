@@ -22,9 +22,21 @@ const DIRS: Vec[] = [
   { x: -1, y: 0 },
 ];
 
-/** Shortest 4-connected path avoiding rocks and no-go cells. Excludes `from`; null if unreachable. */
-export function findPath(map: SimMap, from: Vec, to: Vec): Vec[] | null {
-  if (!isPassable(map, to)) return null;
+export const zoneAt = (map: SimMap, p: Vec) =>
+  map.noGoZones.find(({ rect: r }) => p.x >= r.x && p.y >= r.y && p.x < r.x + r.w && p.y < r.y + r.h);
+
+/**
+ * Shortest 4-connected path. Excludes `from`; null if unreachable.
+ * By default rocks and sand are impassable; callers can pass a stricter `blocked` test.
+ */
+export function findPath(
+  map: SimMap,
+  from: Vec,
+  to: Vec,
+  blocked: (p: Vec) => boolean = (p) => !isPassable(map, p),
+): Vec[] | null {
+  const isOpen = (p: Vec) => inBounds(map, p) && !blocked(p);
+  if (!isOpen(to)) return null;
   if (samePos(from, to)) return [];
 
   const prev = new Int32Array(map.width * map.height).fill(-1);
@@ -40,7 +52,7 @@ export function findPath(map: SimMap, from: Vec, to: Vec): Vec[] | null {
     const cy = Math.floor(cur / map.width);
     for (const d of DIRS) {
       const next = { x: cx + d.x, y: cy + d.y };
-      if (!isPassable(map, next)) continue;
+      if (!isOpen(next)) continue;
       const ni = cellIndex(map, next);
       if (prev[ni] !== -1) continue;
       prev[ni] = cur;

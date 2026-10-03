@@ -1,0 +1,57 @@
+{
+  "planId": "p-001",
+  "version": 1,
+  "intent": "Sample the layered outcrop NE; avoid sand; keep battery above 30%",
+  "limits": {
+    "batteryFloorPct": 30,
+    "noGoZones": ["sand-1"],
+    "irreversibleNeedsApproval": true
+  },
+  "steps": [
+    {
+      "id": "s1",
+      "action": "drive_to",
+      "args": { "target": "wp-A" },
+      "branches": [
+        { "if": "path_blocked", "then": "goto:s1b" },
+        { "if": "battery_below_floor", "then": "abort" }
+      ]
+    },
+    {
+      "id": "s1b",
+      "action": "drive_to",
+      "args": { "target": "wp-A-alt" },
+      "branches": [{ "if": "battery_below_floor", "then": "abort" }]
+    },
+    {
+      "id": "s2",
+      "action": "drive_to",
+      "args": { "target": "outcrop-1" },
+      "branches": [{ "if": "battery_below_floor", "then": "abort" }]
+    },
+    {
+      "id": "s3",
+      "action": "image",
+      "args": { "target": "outcrop-1" },
+      "branches": [{ "if": "target_not_found", "then": "escalate" }]
+    },
+    {
+      "id": "s4",
+      "action": "drill",
+      "args": { "site": "outcrop-1", "depthCm": 5 },
+      "irreversible": true,
+      "approved": true,
+      "branches": [{ "if": "rock_too_hard", "then": "escalate" }]
+    },
+    {
+      "id": "s5",
+      "action": "collect_sample",
+      "args": { "site": "outcrop-1" },
+      "irreversible": true,
+      "approved": true
+    }
+  ],
+  "escalateWhen": ["no_branch_matches", "confidence_below:0.6"],
+  "abort": { "behavior": "stop_and_return", "to": "last_safe_waypoint" },
+  "whileWaiting": ["image_surroundings"]
+}

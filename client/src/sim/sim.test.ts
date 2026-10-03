@@ -3,6 +3,7 @@ import { SimClock } from './clock';
 import { TICKS_PER_MIN } from './config';
 import { findPath } from './grid';
 import { generateMap } from './map';
+import { DEMO_PLAN } from './mars/mission';
 import { Sim } from './sim';
 import type { Vec } from './types';
 
@@ -44,38 +45,38 @@ describe('delay link (Batch 1 done-when)', () => {
   it('moves the rover only after the one-way delay', () => {
     const sim = new Sim({ seed: 42, oneWayDelayMin: DELAY });
     const start = { ...sim.rover.pos };
-    sim.sendCommand({ action: 'drive_to', args: { target: 'wp-A' } });
+    expect(sim.sendPlan(DEMO_PLAN).ok).toBe(true);
 
     sim.stepTo(DELAY - 0.1);
-    expect(sim.rover.status).toBe('idle');
+    expect(sim.executor.mode).toBe('idle');
     expect(sim.rover.pos).toEqual(start);
 
     sim.stepTo(DELAY);
-    expect(sim.rover.status).toBe('driving');
+    expect(sim.executor.mode).toBe('executing');
 
     sim.stepTo(DELAY + 2);
     expect(sim.rover.pos).not.toEqual(start);
   });
 
-  it('delivers the ack to mission control one delay after the rover received it', () => {
+  it('delivers the ack to mission control one delay after the rover received the plan', () => {
     const sim = new Sim({ seed: 42, oneWayDelayMin: DELAY });
-    sim.sendCommand({ action: 'drive_to', args: { target: 'wp-A' } });
+    sim.sendPlan(DEMO_PLAN);
 
     sim.stepTo(2 * DELAY - 0.1);
-    expect(sim.ground.commands[0].status).toBe('in_flight');
+    expect(sim.ground.uplinks[0].status).toBe('in_flight');
 
     sim.stepTo(2 * DELAY);
-    expect(sim.ground.commands[0]).toMatchObject({
+    expect(sim.ground.uplinks[0]).toMatchObject({
       status: 'accepted',
       roverReceivedAt: DELAY,
       ackReceivedAt: 2 * DELAY,
     });
   });
 
-  it("only ever shows mission control rover state that is at least one delay old", () => {
+  it('only ever shows mission control rover state that is at least one delay old', () => {
     const sim = new Sim({ seed: 42, oneWayDelayMin: DELAY });
     const history = new Map<number, Vec>([[0, { ...sim.rover.pos }]]);
-    sim.sendCommand({ action: 'drive_to', args: { target: 'outcrop-1' } });
+    sim.sendPlan(DEMO_PLAN);
 
     let sawMovement = false;
     for (let tick = 1; tick <= 60 * TICKS_PER_MIN; tick++) {
@@ -83,24 +84,10 @@ describe('delay link (Batch 1 done-when)', () => {
       history.set(tick, { ...sim.rover.pos });
 
       const known = sim.ground.lastState;
-      const knownTick = Math.round(known.simTime * TICKS_PER_MIN);
-      expect(known.pos).toEqual(history.get(knownTick));
-      if (known.simTime > 0) {
-        expect(sim.now - known.simTime).toBeGreaterThanOrEqual(DELAY - 1e-9);
-      }
-      if (known.pos.x !== sim.map.roverStart.x || known.pos.y !== sim.map.roverStart.y) {
-        sawMovement = true;
-      }
+      expect(known.pos).toEqual(history.get(Math.round(known.simTime * TICKS_PER_MIN)));
+      if (known.simTime > 0) expect(sim.now - known.simTime).toBeGreaterThanOrEqual(DELAY - 1e-9);
+      if (known.pos.x !== sim.map.roverStart.x || known.pos.y !== sim.map.roverStart.y) sawMovement = true;
     }
     expect(sawMovement).toBe(true);
-    expect(sim.rover.target).toBe('outcrop-1');
-  });
-
-  it('rejects a drive into an unreachable target without moving', () => {
-    const sim = new Sim({ seed: 42, oneWayDelayMin: DELAY });
-    sim.sendCommand({ action: 'drive_to', args: { target: 'nowhere' } });
-    sim.stepTo(2 * DELAY);
-    expect(sim.rover.pos).toEqual(sim.map.roverStart);
-    expect(sim.ground.commands[0].status).toBe('rejected');
   });
 });

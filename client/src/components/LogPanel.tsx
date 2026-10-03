@@ -1,10 +1,14 @@
 import { formatClock } from '../format';
 import type { LogEntry } from '../sim/sim';
 
-const MAX_ENTRIES = 8;
+interface LogPanelProps {
+  title: string;
+  entries: readonly LogEntry[];
+  max?: number;
+}
 
-export function LogPanel({ title, entries }: { title: string; entries: readonly LogEntry[] }) {
-  const recent = entries.slice(-MAX_ENTRIES).reverse();
+export function LogPanel({ title, entries, max = 8 }: LogPanelProps) {
+  const recent = entries.slice(-max).reverse();
   return (
     <div className="log">
       <h3>{title}</h3>

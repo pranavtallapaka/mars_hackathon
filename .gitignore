@@ -6,3 +6,7 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Raw HiRISE DTMs are hundreds of MB; only the processed heightmap is committed.
+data/raw/
+*.IMG

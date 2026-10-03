@@ -4,13 +4,19 @@ interface MapGridProps {
   map: SimMap;
   rover: Vec;
   path?: readonly Vec[];
-  target?: string | null;
+  /** Obstacles the rover has sensed (and reported, on the ground view). */
+  boulders?: readonly Vec[];
+  /** Staged obstacles nobody has seen yet; only shown on the sim-truth view. */
+  hidden?: readonly Vec[];
   stale?: boolean;
 }
 
-export function MapGrid({ map, rover, path = [], target, stale = false }: MapGridProps) {
-  const pathCells = new Set(path.map((p) => p.y * map.width + p.x));
-  const featureAt = new Map(map.features.map((f) => [f.pos.y * map.width + f.pos.x, f]));
+export function MapGrid({ map, rover, path = [], boulders = [], hidden = [], stale = false }: MapGridProps) {
+  const key = (p: Vec) => p.y * map.width + p.x;
+  const pathCells = new Set(path.map(key));
+  const boulderCells = new Set(boulders.map(key));
+  const hiddenCells = new Set(hidden.map(key));
+  const featureAt = new Map(map.features.map((f) => [key(f.pos), f]));
 
   return (
     <div className="map" style={{ gridTemplateColumns: `repeat(${map.width}, 1fr)` }}>
@@ -21,7 +27,8 @@ export function MapGrid({ map, rover, path = [], target, stale = false }: MapGri
         const classes = ['cell', cell];
         if (pathCells.has(i)) classes.push('path');
         if (feature) classes.push('feature', feature.kind);
-        if (feature && feature.id === target) classes.push('target-active');
+        if (boulderCells.has(i)) classes.push('boulder');
+        else if (hiddenCells.has(i)) classes.push('hidden-obstacle');
         return (
           <div key={i} className={classes.join(' ')} title={feature ? `${feature.id}: ${feature.label}` : undefined}>
             {feature && <span className="tag">{feature.tag}</span>}
@@ -41,6 +48,8 @@ export function MapLegend() {
       <span><i className="sw waypoint" /> waypoint</span>
       <span><i className="sw target" /> science target</span>
       <span><i className="sw path" /> planned path</span>
+      <span><i className="sw boulder" /> boulder (sensed)</span>
+      <span><i className="sw hidden-obstacle" /> staged surprise (not yet sensed)</span>
     </div>
   );
 }

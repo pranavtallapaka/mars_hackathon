@@ -1,6 +1,6 @@
 import { formatClock, formatMin } from '../format';
 import type { LinkMessage } from '../sim/link';
-import { describeCommand, type Sim } from '../sim/sim';
+import type { Sim } from '../sim/sim';
 import type { Downlink, Uplink } from '../sim/types';
 
 interface Lane {
@@ -12,12 +12,14 @@ interface Lane {
 
 function describePayload(payload: Uplink | Downlink): string {
   switch (payload.kind) {
-    case 'command':
-      return `${payload.command.id} ${describeCommand(payload.command)}`;
+    case 'plan':
+      return `plan ${payload.plan.planId} v${payload.plan.version}`;
     case 'ack':
-      return `ack ${payload.commandId}${payload.ok ? '' : ' (rejected)'}`;
+      return `ack ${payload.planId} v${payload.version}${payload.ok ? '' : ' (rejected)'}`;
     case 'telemetry':
-      return `telemetry ${formatClock(payload.state.simTime)}`;
+      return `status ${formatClock(payload.state.simTime)}`;
+    case 'escalation':
+      return `ESCALATION ${payload.packet.stepId}`;
   }
 }
 

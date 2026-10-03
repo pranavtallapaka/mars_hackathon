@@ -1,3 +1,6 @@
+import type { EscalationPacket, Plan } from '../../../shared/plan';
+import type { ExecutorMode } from './executor';
+
 export interface Vec {
   x: number;
   y: number;
@@ -37,26 +40,23 @@ export interface SimMap {
   roverStart: Vec;
 }
 
-export type RoverStatus = 'idle' | 'driving' | 'holding';
-
 export interface RoverSnapshot {
   /** Sim minute at which the rover measured this state. */
   simTime: number;
   pos: Vec;
   batteryPct: number;
-  status: RoverStatus;
-  activeCommandId: string | null;
-  target: string | null;
+  mode: ExecutorMode;
+  planId: string | null;
+  planVersion: number | null;
+  stepId: string | null;
+  activity: string;
+  imagesTaken: number;
+  discovered: Vec[];
 }
 
-export type CommandInput =
-  | { action: 'drive_to'; args: { target: string } }
-  | { action: 'hold' };
-
-export type Command = CommandInput & { id: string };
-
-export type Uplink = { kind: 'command'; command: Command };
+export type Uplink = { kind: 'plan'; plan: Plan };
 
 export type Downlink =
-  | { kind: 'ack'; commandId: string; ok: boolean; reason?: string; state: RoverSnapshot }
-  | { kind: 'telemetry'; state: RoverSnapshot };
+  | { kind: 'ack'; planId: string; version: number; ok: boolean; reason?: string; state: RoverSnapshot }
+  | { kind: 'telemetry'; state: RoverSnapshot }
+  | { kind: 'escalation'; packet: EscalationPacket; state: RoverSnapshot };
