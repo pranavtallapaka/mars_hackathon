@@ -62,6 +62,13 @@ export function useSim() {
     [engine],
   );
 
+  const requestImage = useCallback(
+    (stepId: string) => {
+      if (engine.ours.requestImage(stepId)) engine.clock.paused = false;
+    },
+    [engine],
+  );
+
   const setAutoAnswer = useCallback(
     (on: boolean) => {
       setAutoAnswerState(on);
@@ -80,6 +87,7 @@ export function useSim() {
     setAutoAnswer,
     start,
     decide,
+    requestImage,
     reset,
   };
 }

@@ -7,7 +7,8 @@ import { MissionPane } from './components/MissionPane';
 import { useSim } from './useSim';
 
 export default function App() {
-  const { clock, baseline, ours, started, awaitingDecision, autoAnswer, setAutoAnswer, start, decide, reset } = useSim();
+  const { clock, baseline, ours, started, awaitingDecision, autoAnswer, setAutoAnswer, start, decide, requestImage, reset } =
+    useSim();
 
   return (
     <div className="app">
@@ -33,7 +34,7 @@ export default function App() {
 
       <div className="panes">
         <MissionPane sim={baseline} />
-        <MissionPane sim={ours} onDecide={decide} />
+        <MissionPane sim={ours} onDecide={decide} onRequestImage={requestImage} />
       </div>
     </div>
   );

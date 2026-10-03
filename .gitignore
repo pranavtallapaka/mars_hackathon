@@ -10,3 +10,6 @@ dist/
 # Raw HiRISE DTMs are hundreds of MB; only the processed heightmap is committed.
 data/raw/
 *.IMG
+
+# Probe images from one-off Imagine tests; demo caches under this folder may be committed.
+data/reconstructions/_imagine-probe.jpg

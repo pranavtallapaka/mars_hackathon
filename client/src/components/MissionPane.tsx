@@ -1,3 +1,4 @@
+import { formatDataBytes } from '../../../shared/scene';
 import type { Sim } from '../sim/sim';
 import { EscalationView } from './EscalationView';
 import { LinkPanel } from './LinkPanel';
@@ -21,7 +22,6 @@ const COPY = {
 
 export function Counters({ sim }: { sim: Sim }) {
   const m = sim.metrics;
-  const kb = (b: number) => `${(b / 1024).toFixed(1)} KB`;
   return (
     <dl className="counters">
       <div className="big">
@@ -37,7 +37,7 @@ export function Counters({ sim }: { sim: Sim }) {
       <div>
         <dt>Bytes up / down</dt>
         <dd>
-          {kb(m.bytesUp)} / {kb(m.bytesDown)}
+          {formatDataBytes(m.bytesUp)} / {formatDataBytes(m.bytesDown)}
         </dd>
       </div>
       <div>
@@ -52,7 +52,15 @@ export function Counters({ sim }: { sim: Sim }) {
   );
 }
 
-export function MissionPane({ sim, onDecide }: { sim: Sim; onDecide?: (optionId: string) => void }) {
+export function MissionPane({
+  sim,
+  onDecide,
+  onRequestImage,
+}: {
+  sim: Sim;
+  onDecide?: (optionId: string) => void;
+  onRequestImage?: (stepId: string) => void;
+}) {
   const { ground, rover, now } = sim;
   const copy = COPY[sim.mode];
   const known = ground.lastState;
@@ -107,6 +115,8 @@ export function MissionPane({ sim, onDecide }: { sim: Sim; onDecide?: (optionId:
           blockedReasons={
             ground.lastBlocked && ground.lastBlocked.at >= latest.receivedAt ? ground.lastBlocked.reasons : undefined
           }
+          onRequestImage={onRequestImage}
+          imageRequest={ground.imageRequests.find((r) => r.stepId === latest.packet.stepId)}
         />
       )}
       {ground.currentPlan ? (

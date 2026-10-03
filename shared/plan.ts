@@ -76,17 +76,21 @@ export function confidenceThreshold(plan: Plan): number | null {
   return entry ? Number(entry.split(':')[1]) : null;
 }
 
+export const sceneSchema = z.object({
+  objects: z.array(z.string()),
+  slopeDeg: z.number(),
+  terrain: z.string(),
+});
+
+export type Scene = z.output<typeof sceneSchema>;
+
 export const escalationPacketSchema = z
   .object({
     planId: z.string().min(1),
     stepId: z.string().min(1),
     simTime: z.number().nonnegative(),
     whatHappened: z.string().min(1),
-    scene: z.object({
-      objects: z.array(z.string()),
-      slopeDeg: z.number(),
-      terrain: z.string(),
-    }),
+    scene: sceneSchema,
     options: z
       .array(
         z.object({

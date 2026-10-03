@@ -21,8 +21,7 @@ export class DelayChannel<T> {
     return this.queue;
   }
 
-  send(payload: T, now: number): LinkMessage<T> {
-    const bytes = encoder.encode(JSON.stringify(payload)).length;
+  send(payload: T, now: number, bytes = encoder.encode(JSON.stringify(payload)).length): LinkMessage<T> {
     const msg: LinkMessage<T> = {
       id: this.nextId++,
       payload,

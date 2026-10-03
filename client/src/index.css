@@ -744,6 +744,46 @@ button.danger:hover {
   font-weight: 600;
 }
 
+.recon {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.recon-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--terrain);
+  border: 1px solid var(--relief);
+}
+
+.recon-img.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.recon-label {
+  margin: 0.35rem 0 0.15rem;
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+
+.bytes-compare {
+  margin: 0.1rem 0;
+  font-size: 0.95rem;
+}
+
+.camera-frame {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule);
+}
+
 .escalation p {
   margin: 0;
 }
@@ -870,6 +910,12 @@ button.danger:hover {
 
 .packet.kind-escalation .packet-label {
   color: var(--hazard-text);
+}
+
+.packet.kind-image .packet-dot,
+.packet.kind-image_request .packet-dot {
+  background: var(--ink);
+  border-color: var(--ink);
 }
 
 .packet-label {

@@ -54,10 +54,14 @@ export interface RoverSnapshot {
   discovered: Vec[];
 }
 
-export type Uplink = { kind: 'plan'; plan: Plan };
+export type Uplink =
+  | { kind: 'plan'; plan: Plan }
+  | { kind: 'image_request'; planId: string; stepId: string };
 
 export type Downlink =
   | { kind: 'ack'; planId: string; version: number; ok: boolean; reason?: string; state: RoverSnapshot }
   | { kind: 'telemetry'; state: RoverSnapshot }
   /** `condition` is link metadata (like a fault code); the packet itself stays exactly the §3 schema. */
-  | { kind: 'escalation'; packet: EscalationPacket; condition: string | null; state: RoverSnapshot };
+  | { kind: 'escalation'; packet: EscalationPacket; condition: string | null; state: RoverSnapshot }
+  /** Metadata only; byte cost is the real camera-frame size, not the JSON. */
+  | { kind: 'image'; planId: string; stepId: string; bytes: number; state: RoverSnapshot };

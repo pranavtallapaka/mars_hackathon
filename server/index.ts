@@ -1,17 +1,24 @@
+import { readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
 import dotenv from 'dotenv';
 import express from 'express';
 import { compilePlan } from '../shared/compiler';
 import { CACHED_DEMO_PLAN, MARS_DEMO_BRIEFING } from '../shared/missions/mars-demo';
+import { sceneSchema } from '../shared/plan';
 import { MARS_SURFACE } from '../shared/scenario';
+import type { SceneVariant } from '../shared/scene';
 import { grokModelCall } from './grok';
+import { cachedReconstruction, reconstructScene, RECON_DIR } from './imagine';
 
 // The project's .env wins over stale keys exported in the user's shell.
 dotenv.config({ override: true, quiet: true });
 
 const PORT = Number(process.env.PORT ?? 3001);
 const XAI_MODEL = process.env.XAI_MODEL ?? 'grok-4.7';
+const XAI_IMAGE_MODEL = process.env.XAI_IMAGE_MODEL ?? 'grok-imagine-image-2.0';
 const XAI_REASONING_EFFORT = process.env.XAI_REASONING_EFFORT ?? 'low';
 const MAX_INTENT_CHARS = 1000;
+const ID_RE = /^[a-f0-9]{8}$/;
 
 const keys = {
   xai: Boolean(process.env.XAI_API_KEY),
@@ -48,6 +55,27 @@ app.post('/api/compile', async (req, res) => {
       result.attempts.flatMap((a) => a.errors.map((e) => `\n  - ${e}`)).join(''),
   );
   res.json(result);
+});
+
+app.post('/api/reconstruct', async (req, res) => {
+  const parsed = sceneSchema.safeParse(req.body?.scene);
+  if (!parsed.success) return res.status(400).json({ error: 'scene is required' });
+  const variant: SceneVariant = req.body?.variant === 'frame' ? 'frame' : 'reconstruction';
+  const result = await reconstructScene(parsed.data, process.env.XAI_API_KEY, XAI_IMAGE_MODEL, variant);
+  console.log(
+    `reconstruct (${variant}): ${result.source}` +
+      (result.ms !== undefined ? ` in ${(result.ms / 1000).toFixed(1)} s` : '') +
+      (result.reason ? ` (${result.reason})` : ''),
+  );
+  res.json(result);
+});
+
+app.get('/api/reconstructions/:id', (req, res) => {
+  const id = req.params.id;
+  if (!ID_RE.test(id)) return res.status(400).end();
+  const file = path.join(RECON_DIR, `${id}.jpg`);
+  if (!existsSync(file) || !cachedReconstruction(id)) return res.status(404).end();
+  res.type('image/jpeg').send(readFileSync(file));
 });
 
 app.listen(PORT, () => {

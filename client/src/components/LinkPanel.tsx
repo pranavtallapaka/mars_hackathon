@@ -20,6 +20,10 @@ function describePayload(payload: Uplink | Downlink): string {
       return `status ${formatClock(payload.state.simTime)}`;
     case 'escalation':
       return `escalation ${payload.packet.stepId}`;
+    case 'image_request':
+      return `image request ${payload.stepId}`;
+    case 'image':
+      return `camera frame ${payload.stepId}`;
   }
 }
 

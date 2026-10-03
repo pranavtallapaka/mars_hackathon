@@ -25,6 +25,7 @@ import { parseOptionLabel } from './mars/options';
 import { MarsRover } from './mars/rover';
 import type { Downlink, RoverSnapshot, SimMap, Uplink } from './types';
 import { checkPlanSafety, type SafetyReport } from './validator';
+import { REAL_IMAGE_BYTES, sceneBytes } from '../../../shared/scene';
 
 const EPS = 1e-9;
 const BASELINE_PLAN_ID = 'b-001';
@@ -53,6 +54,14 @@ export interface ReceivedEscalation {
   bytes: number;
 }
 
+export interface ImageRequest {
+  stepId: string;
+  sentAt: number;
+  receivedAt: number | null;
+  upBytes: number;
+  downBytes: number;
+}
+
 /** Everything mission control knows. It only changes when a downlink message arrives. */
 export interface GroundView {
   lastState: RoverSnapshot;
@@ -60,6 +69,7 @@ export interface GroundView {
   currentPlan: Plan | null;
   uplinks: SentPlan[];
   escalations: ReceivedEscalation[];
+  imageRequests: ImageRequest[];
   blockedBeforeUplink: number;
   lastBlocked: { at: number; planId: string; version: number; reasons: string[] } | null;
   completionConfirmedAt: number | null;
@@ -168,6 +178,7 @@ export class Sim {
       currentPlan: null,
       uplinks: [],
       escalations: [],
+      imageRequests: [],
       blockedBeforeUplink: 0,
       lastBlocked: null,
       completionConfirmedAt: null,
@@ -184,6 +195,22 @@ export class Sim {
       { pos, batteryPct, knownObstacles: discovered },
       this.scenario.irreversibleActions,
     );
+  }
+
+  /**
+   * Ask the rover for the real camera frame. Costs an uplink now and REAL_IMAGE_BYTES
+   * one delay later; counts as a round trip. Decisions still use the structured scene.
+   */
+  requestImage(stepId: string): boolean {
+    const esc = this.ground.escalations.find((e) => e.packet.stepId === stepId);
+    if (!esc || this.ground.imageRequests.some((r) => r.stepId === stepId)) return false;
+    const msg = this.link.up.send({ kind: 'image_request', planId: esc.packet.planId, stepId }, this.now);
+    this.ground.imageRequests.push({ stepId, sentAt: this.now, receivedAt: null, upBytes: msg.bytes, downBytes: 0 });
+    this.groundLog.push({
+      t: this.now,
+      text: `Requested camera frame for ${stepId} (${msg.bytes} B up). Description was ${sceneBytes(esc.packet.scene)} B; the frame is ${REAL_IMAGE_BYTES} B.`,
+    });
+    return true;
   }
 
   /** The operator's one-click answer to the escalation on screen. */
@@ -210,7 +237,7 @@ export class Sim {
       complete: this.completedAt !== null,
       completedAt: this.completedAt,
       confirmedAt: this.ground.completionConfirmedAt,
-      roundTrips: this.ground.uplinks.length,
+      roundTrips: this.ground.uplinks.length + this.ground.imageRequests.length,
       bytesUp: this.link.up.totalBytes,
       bytesDown: this.link.down.totalBytes,
       escalations: this.ground.escalations.length,
@@ -308,6 +335,15 @@ export class Sim {
 
   /** Rover boundary: re-validate whatever arrives before executing it. */
   private receiveUplink(payload: Uplink): void {
+    if (payload.kind === 'image_request') {
+      this.rover.imagesTaken++;
+      this.roverLog.push({ t: this.now, text: `Downlinking camera frame for ${payload.stepId} (${REAL_IMAGE_BYTES} B)` });
+      this.downlink(
+        { kind: 'image', planId: payload.planId, stepId: payload.stepId, bytes: REAL_IMAGE_BYTES, state: this.snapshot() },
+        REAL_IMAGE_BYTES,
+      );
+      return;
+    }
     const parsed = this.planSchema.safeParse(payload.plan);
     const { planId, version } = payload.plan;
     if (!parsed.success) {
@@ -320,8 +356,8 @@ export class Sim {
     this.downlink({ kind: 'ack', planId, version, ok: true, state: this.snapshot() });
   }
 
-  private downlink(payload: Downlink): void {
-    this.link.down.send(payload, this.now);
+  private downlink(payload: Downlink, bytes?: number): void {
+    this.link.down.send(payload, this.now, bytes);
     this.lastTelemetryAt = this.now;
   }
 
@@ -353,6 +389,17 @@ export class Sim {
           ? `Ack: rover loaded ${payload.planId} v${payload.version} ${ago} min ago`
           : `Ack: rover rejected ${payload.planId} v${payload.version} ${ago} min ago (${payload.reason})`,
       });
+      return;
+    }
+
+    if (payload.kind === 'image') {
+      const req = this.ground.imageRequests.find((r) => r.stepId === payload.stepId && r.receivedAt === null);
+      if (req) {
+        req.receivedAt = now;
+        req.downBytes = bytes;
+      }
+      this.groundLog.push({ t: now, text: `Camera frame for ${payload.stepId} arrived (${bytes} B)` });
+      if (this.awaitingDecision) this.holdRequested = true;
       return;
     }
 
