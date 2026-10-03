@@ -1,41 +1,54 @@
-import { useEffect, useState } from 'react';
-
-type Health = { ok: boolean; keys: { xai: boolean; elevenlabs: boolean } };
+import { ClockBar } from './components/ClockBar';
+import { CommandPanel } from './components/CommandPanel';
+import { HealthBadge } from './components/HealthBadge';
+import { LinkPanel } from './components/LinkPanel';
+import { LogPanel } from './components/LogPanel';
+import { MapGrid, MapLegend } from './components/MapGrid';
+import { RoverStats } from './components/RoverStats';
+import { useSim } from './useSim';
 
 export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('/api/health')
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Health>;
-      })
-      .then(setHealth)
-      .catch((e: Error) => setError(e.message));
-  }, []);
+  const { clock, sim } = useSim();
+  const { ground, rover, now } = sim;
+  const staleMin = Math.floor(now - ground.lastState.simTime);
 
   return (
-    <main>
-      <h1>Mars Latency Mediation</h1>
-      <p className="subtitle">Mission control (Batch 0 scaffold)</p>
-      <section className="card">
-        <h2>Backend</h2>
-        {error && <p className="bad">Unreachable: {error}</p>}
-        {!error && !health && <p>Checking…</p>}
-        {health && (
-          <ul>
-            <li className={health.ok ? 'good' : 'bad'}>API: {health.ok ? 'ok' : 'down'}</li>
-            <li className={health.keys.xai ? 'good' : 'bad'}>
-              XAI_API_KEY: {health.keys.xai ? 'loaded' : 'missing'}
-            </li>
-            <li className={health.keys.elevenlabs ? 'good' : 'bad'}>
-              ELEVENLABS_API_KEY: {health.keys.elevenlabs ? 'loaded' : 'missing'}
-            </li>
-          </ul>
-        )}
-      </section>
-    </main>
+    <div className="app">
+      <header className="topbar">
+        <div>
+          <h1>Mars Latency Mediation</h1>
+          <p className="subtitle">Sim core · clock · delay link</p>
+        </div>
+        <HealthBadge />
+      </header>
+
+      <ClockBar clock={clock} delayMin={sim.link.oneWayDelayMin} />
+
+      <div className="panes">
+        <section className="pane">
+          <div className="pane-head">
+            <h2>Mission control · Earth</h2>
+            <span className="stale-label">Rover as of {staleMin} min ago</span>
+          </div>
+          <MapGrid map={sim.map} rover={ground.lastState.pos} target={ground.lastState.target} stale />
+          <RoverStats state={ground.lastState} />
+          <CommandPanel sim={sim} />
+          <LogPanel title="Ground log" entries={sim.groundLog} />
+        </section>
+
+        <section className="pane">
+          <div className="pane-head">
+            <h2>Rover · Mars</h2>
+            <span className="live-label">Onboard, live (sim truth)</span>
+          </div>
+          <MapGrid map={sim.map} rover={rover.pos} path={rover.plannedPath} target={rover.target} />
+          <RoverStats state={rover.snapshot(now)} />
+          <LogPanel title="Onboard log" entries={sim.roverLog} />
+        </section>
+      </div>
+
+      <MapLegend />
+      <LinkPanel sim={sim} />
+    </div>
   );
 }
