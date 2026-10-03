@@ -8,6 +8,7 @@ Concept stage. Core thesis and architecture are set; stack and sponsor tracks ar
 
 | Date | Change | Note |
 | --- | --- | --- |
+| 2026-10-03 | Added stretch batches | S1 real Mars data (HiRISE + ephemeris delays), S2 Scenario B lab; only Spacetime stays out of scope |
 | 2026-10-03 | Removed Scenario B | Mars surface is the only use case; space biology may be added back if time allows |
 | 2026-10-03 | Batch plan written | 9 batches for a 10-hour solo build; Scenario B moved to roadmap |
 | 2026-10-03 | Locked build decisions | Compressed sim time, honest baseline, plan schema, React + TS + Node |
@@ -135,7 +136,7 @@ Both panes run the same seed, map, mission and surprises, so the only difference
 
 ### 3. Plan schema (the contract)
 
-One schema, shared by compiler, validator, executor and UI. Actions and conditions are fixed enums so the executor stays deterministic; the LLM may only use these.
+One schema, shared by compiler, validator, executor and UI. Actions and conditions are fixed enums per scenario, loaded from a scenario config, so the executor stays deterministic; the LLM may only use these. Values below are for the Mars scenario.
 
 - **Actions:** `drive_to`, `image`, `collect_sample`, `drill`, `hold`
 - **Conditions:** `path_blocked`, `rock_too_hard`, `battery_below_floor`, `hazard_detected`, `target_not_found`, `confidence_below`
@@ -199,13 +200,16 @@ The `scene` field is what Grok Imagine renders on the ground.
 - **Deterministic demo:** fixed map seed and one scripted mission with one staged surprise and one unsafe command.
 - **LLM fallback:** if Grok's plan fails validation after one retry, load a cached known-good plan for that mission.
 
-## Use case
+## Use cases
 
-One scenario: a rover on the Mars surface, built end to end.
+Mars surface is the core scenario and must work end to end. Scenario B is a stretch goal (Stretch S2): a second config of the same engine, not a second build.
 
-| Setting | What it stresses | Example intent |
-| --- | --- | --- |
-| Rover on Mars, real terrain and real delay | Navigation and sampling with branching contingencies | "Sample the layered outcrop to the northeast; avoid sand" |
+| Scenario | Setting | What it stresses | Example intent |
+| --- | --- | --- | --- |
+| A. Mars surface (core) | Rover on Mars, real terrain and real delay | Navigation and sampling with branching contingencies | "Sample the layered outcrop to the northeast; avoid sand" |
+| B. Biology lab (stretch) | Autonomous life-detection lab on a Mars lander | Delicate, irreversible actions where knowing *when* to escalate matters most | "Run the growth assay; abort if contamination is detected" |
+
+Scenario B must not be set on the ISS: ISS latency is under a second and crew are on board, so the core problem doesn't exist there.
 
 ## Demo and metrics
 
@@ -230,16 +234,17 @@ The delay slider should be adjustable (3 to 22 minutes) so judges see the gap wi
 
 Candidates from memory, not yet verified for the hackathon; confirm access and formats before building on them.
 
-| Source | Use in project |
-| --- | --- |
-| HiRISE terrain models (DEMs) | Real Mars terrain for the sim map |
-| NASA Planetary Data System, rover imagery | Realistic scenes, science targets |
-| JPL Horizons ephemerides | Real Earth–Mars distance → delay for a given date |
-| Sponsor resources | Grok (LLM + Imagine), ElevenLabs; see Tech stack |
+| Source | Use in project | Batch |
+| --- | --- | --- |
+| HiRISE terrain models (DTMs), e.g. Jezero crater | Real Mars terrain, slopes and hazards for the sim map | Stretch S1 |
+| Planetary ephemerides (astronomy-engine npm, or JPL Horizons) | Real Earth–Mars distance → one-way delay for a given date | Stretch S1 |
+| NASA Planetary Data System, rover imagery | Realistic scenes and science targets | Stretch S1 (optional) |
+| NASA GeneLab / Open Science Data Repository | Realistic parameters for the biology lab | Stretch S2 |
+| Sponsor resources | Grok (LLM + Imagine), ElevenLabs; see Tech stack | Core |
 
 ## Build plan
 
-Solo build, about 10 hours: 9 batches (9h15m) plus 45 minutes of buffer. Work strictly in order; finish each batch's "done when" check and commit before starting the next.
+Solo build, about 10 hours. Core: 9 batches (9h15m). Stretch: S1 and S2 (3h15m). Core plus stretch is about 12h30m, more than the time available, so stretch work only happens if the core runs ahead of schedule. Work strictly in order; finish each batch's "done when" check and commit before starting the next.
 
 **Instructions for Cursor:** read this whole doc first. Treat Build decisions and the plan schema as fixed. Do one batch per session, and don't build ahead.
 
@@ -263,7 +268,7 @@ Solo build, about 10 hours: 9 batches (9h15m) plus 45 minutes of buffer. Work st
 - Deterministic executor: runs steps, evaluates branch conditions from sim sensing, logs one line per decision
 - Escalation: enters safe hold, runs `whileWaiting` tasks, sends the packet
 - Onboard hard limits: battery floor, no-go zones, irreversible-action approval
-- Use a hand-written plan JSON; no LLM yet
+- Use a hand-written plan JSON; no LLM yet. Load action and condition enums from a per-scenario config, not hard-coded, so Scenario B (Stretch S2) reuses the engine
 - **Done when:** the scripted mission runs, takes a branch on the staged obstacle, and escalates on the hard-rock surprise
 
 ### Batch 3 — Baseline and side-by-side view (1:00)
@@ -306,6 +311,29 @@ Solo build, about 10 hours: 9 batches (9h15m) plus 45 minutes of buffer. Work st
 - Robot voice reads escalations, played only when the packet arrives after the delay
 - **Done when:** a full run works by voice, and the typed path still works with the mic off
 
+### Stretch batches
+
+Run these only if checkpoint 2 lands on time. Each must pass its own "done when" before the next starts. Batch 8 (polish) always runs last, after whatever stretch work got done.
+
+### Stretch S1 — Real Mars data (1:45)
+
+The SpaceX track asks for real space data in, so this is the highest-value stretch.
+
+- **Pre-step, do early (even during Batch 1):** download one HiRISE DTM of a rover site (e.g. Jezero crater). Files are large and venue wifi is slow.
+- Offline Python script (rasterio or GDAL): crop and downsample the DTM to a small heightmap (e.g. 128×128 JSON), derive slope, and mark steep cells as hazards and no-go zones
+- Load the heightmap into the sim in place of the synthetic map; keep the synthetic map as a fallback toggle
+- Real delays: compute Earth–Mars distance for a chosen date (e.g. the astronomy-engine npm package, offline), one-way delay = distance ÷ speed of light. A date picker replaces or drives the delay slider
+- **Done when:** the mission runs on real Jezero terrain, and picking a date sets the real delay for that day
+
+### Stretch S2 — Scenario B: autonomous biology lab (1:30)
+
+- Setting: a life-detection lab on a Mars lander (not the ISS)
+- New scenario config only: lab actions (e.g. `prepare_sample`, `incubate`, `image_sample`, `seal`) and conditions (e.g. `contamination_detected`, `growth_below_threshold`); same engine, clock, link, validator and UI
+- Mark irreversible steps (e.g. `seal`, consuming a sample) so escalation behavior is the focus
+- Realistic parameters from NASA GeneLab / OSDR where feasible
+- Scenario switcher in the UI
+- **Done when:** the same side-by-side demo runs in the lab scenario, with one escalation on an irreversible step
+
 ### Batch 8 — Polish and demo hardening (1:00)
 
 - Delay slider (3 to 22 sim minutes)
@@ -317,13 +345,16 @@ Solo build, about 10 hours: 9 batches (9h15m) plus 45 minutes of buffer. Work st
 
 Cut from the top of this list first:
 
-1. Voice reduced to the robot's escalation voice only
-2. Delay slider (keep one fixed delay)
-3. Validator reduced to the battery floor and no-go zone rules
+1. Stretch S2 (Scenario B)
+2. HiRISE terrain from Stretch S1 (keep the synthetic map; keep real ephemeris delays, which are cheap)
+3. The rest of Stretch S1
+4. Voice reduced to the robot's escalation voice only
+5. Delay slider (keep one fixed delay)
+6. Validator reduced to the battery floor and no-go zone rules
 
 Never cut: the baseline comparison, one-reply escalation, or Grok Imagine (required for the SpaceX track).
 
-**Out of scope for this build:** real HiRISE terrain, ephemeris-based delays, Spacetime. These go on a roadmap slide.
+**Out of scope for this build:** Spacetime (parked; revisit only if everything else is done).
 
 ## Open questions and risks
 
@@ -333,7 +364,7 @@ Never cut: the baseline comparison, one-reply escalation, or Grok Imagine (requi
 
 | Risk | Mitigation |
 | --- | --- |
-| Scope: sim + LLM pipeline + Imagine + voice in 10 solo hours | Batch plan with two checkpoints and a cut order |
+| Scope: core + stretch is about 12h30m against 10 solo hours | Stretch only after checkpoint 2 lands on time; cut order drops stretch first; HiRISE download started early |
 | Grok Imagine API unavailable at the event | Confirm first thing; fallback is Grok Voice for the track requirement |
 | Judges ask about hallucinated reconstructions | Labeled illustrative; decisions run on structured data; real image on request |
 | Venue wifi breaks live voice | Typed command fallback always available |
