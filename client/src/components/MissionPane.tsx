@@ -52,7 +52,7 @@ export function Counters({ sim }: { sim: Sim }) {
   );
 }
 
-export function MissionPane({ sim }: { sim: Sim }) {
+export function MissionPane({ sim, onDecide }: { sim: Sim; onDecide?: (optionId: string) => void }) {
   const { ground, rover, now } = sim;
   const copy = COPY[sim.mode];
   const known = ground.lastState;
@@ -96,7 +96,19 @@ export function MissionPane({ sim }: { sim: Sim }) {
         </div>
       </div>
 
-      {latest && <EscalationView escalation={latest} title={copy.stopTitle} answeredAt={answer?.sentAt} />}
+      {latest && (
+        <EscalationView
+          escalation={latest}
+          title={copy.stopTitle}
+          answeredAt={answer?.sentAt}
+          onDecide={sim.awaitingDecision === latest ? onDecide : undefined}
+          decisionMin={sim.decisionMin}
+          pending={sim.pendingAnswer}
+          blockedReasons={
+            ground.lastBlocked && ground.lastBlocked.at >= latest.receivedAt ? ground.lastBlocked.reasons : undefined
+          }
+        />
+      )}
       {ground.currentPlan ? (
         <PlanPanel sim={sim} plan={ground.currentPlan} knownStepId={known.stepId} />
       ) : (

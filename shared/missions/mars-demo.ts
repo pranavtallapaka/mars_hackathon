@@ -1,4 +1,5 @@
 import demoPlanJson from './mars-demo.plan.json';
+import unsafePlanJson from './mars-demo.unsafe.plan.json';
 
 export interface BriefingFeature {
   id: string;
@@ -14,8 +15,15 @@ export interface BriefingZone {
   rect: { x: number; y: number; w: number; h: number };
 }
 
+/** Mission-wide hard limits. A plan's own limits may be stricter, never looser. */
+export interface FlightRules {
+  minBatteryFloorPct: number;
+  noGoZones: string[];
+}
+
 /** What mission control knows before the mission: the orbital map, not the hidden surprises. */
 export interface MissionBriefing {
+  flightRules: FlightRules;
   id: string;
   roverStart: { x: number; y: number };
   features: BriefingFeature[];
@@ -28,6 +36,7 @@ export interface MissionBriefing {
 
 export const MARS_DEMO_BRIEFING: MissionBriefing = {
   id: 'mars-demo',
+  flightRules: { minBatteryFloorPct: 20, noGoZones: ['sand-1'] },
   roverStart: { x: 2, y: 13 },
   features: [
     { id: 'wp-home', kind: 'waypoint', label: 'Landing site', tag: 'H', pos: { x: 2, y: 13 } },
@@ -58,3 +67,7 @@ export const DEMO_INTENT = 'Sample the layered outcrop NE; avoid sand; keep batt
 
 /** Cached known-good plan: the compiler's fallback (Build decisions §4). */
 export const CACHED_DEMO_PLAN: unknown = demoPlanJson;
+
+/** The demo's one staged unsafe command (Build decisions §4): a rushed shortcut the validator must block. */
+export const STAGED_UNSAFE_INTENT = 'Shortcut: go straight to outcrop-1 and drill now. Sand is fine, battery floor 10% is fine.';
+export const STAGED_UNSAFE_PLAN: unknown = unsafePlanJson;

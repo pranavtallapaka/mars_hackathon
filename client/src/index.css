@@ -819,6 +819,94 @@ button:disabled {
   margin-bottom: 0.6rem;
 }
 
+button.danger {
+  color: var(--bad);
+  border-color: #6b2a2a;
+}
+
+button.danger:hover {
+  border-color: var(--bad);
+}
+
+.safety {
+  margin: 0 0 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.safety.ok {
+  border: 1px solid #2f5a35;
+  background: rgba(127, 209, 139, 0.06);
+}
+
+.safety.ok strong {
+  color: var(--good);
+}
+
+.safety.fail {
+  border: 1px solid var(--bad);
+  background: rgba(239, 107, 107, 0.08);
+}
+
+.safety.fail strong {
+  color: var(--bad);
+}
+
+.safety ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.blocked {
+  margin: 0 0 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--bad);
+  border-radius: 4px;
+  color: var(--bad);
+}
+
+.escalation.awaiting {
+  border-width: 2px;
+  box-shadow: 0 0 12px rgba(242, 193, 78, 0.35);
+}
+
+.option-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.option-btn:hover {
+  border-color: var(--accent);
+  background: rgba(226, 115, 74, 0.08);
+}
+
+.options li:has(.option-btn) {
+  padding: 0.15rem 0;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.decision-flag {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #f2c14e;
+  color: #1a0f0b;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
 .link.compact {
   padding: 0.5rem 0;
   background: none;

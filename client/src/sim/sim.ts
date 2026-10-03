@@ -7,6 +7,7 @@ import {
   type Plan,
   type PlanSchema,
 } from '../../../shared/plan';
+import { MARS_DEMO_BRIEFING, type FlightRules } from '../../../shared/missions/mars-demo';
 import { MARS_SURFACE, type ScenarioDef } from '../../../shared/scenario';
 import {
   DEFAULT_ONE_WAY_DELAY_MIN,
@@ -23,6 +24,7 @@ import { buildMarsMission, DEMO_PLAN, type MarsMission } from './mars/mission';
 import { parseOptionLabel } from './mars/options';
 import { MarsRover } from './mars/rover';
 import type { Downlink, RoverSnapshot, SimMap, Uplink } from './types';
+import { checkPlanSafety, type SafetyReport } from './validator';
 
 const EPS = 1e-9;
 const BASELINE_PLAN_ID = 'b-001';
@@ -59,8 +61,14 @@ export interface GroundView {
   uplinks: SentPlan[];
   escalations: ReceivedEscalation[];
   blockedBeforeUplink: number;
+  lastBlocked: { at: number; planId: string; version: number; reasons: string[] } | null;
   completionConfirmedAt: number | null;
 }
+
+/** Operator choices keyed by `${stepId}|${condition}`, shared so the baseline makes the same call ours did. */
+export type DecisionBook = Map<string, string>;
+
+export const decisionKey = (stepId: string, condition: string | null) => `${stepId}|${condition ?? 'violation'}`;
 
 /**
  * `contingency` is our system: one plan with branches, escalate only when no branch fits.
@@ -73,9 +81,13 @@ export interface SimOptions {
   seed?: number;
   oneWayDelayMin?: number;
   mode?: SimMode;
-  /** Scripted mission control that answers stops after `decisionMin`. */
+  /** Scripted mission control answers stops itself; otherwise a human answers with `decide()`. */
   autoOperator?: boolean;
+  /** Think time charged per decision, scripted or human, so both panes pay the same. */
   decisionMin?: number;
+  decisions?: DecisionBook;
+  /** Off only to test the rover's onboard limits on plans the ground would have blocked. */
+  groundSafetyCheck?: boolean;
 }
 
 export interface Metrics {
@@ -90,7 +102,7 @@ export interface Metrics {
   unsafeBlocked: number;
 }
 
-export type SendResult = { ok: true; bytes: number } | { ok: false; errors: string[] };
+export type SendResult = { ok: true; bytes: number } | { ok: false; errors: string[]; unsafe: boolean };
 
 /** One mission world: map, rover, executor, delay link and ground view, stepped in fixed ticks up to the clock's time. */
 export class Sim {
@@ -108,11 +120,18 @@ export class Sim {
   startedAt: number | null = null;
   completedAt: number | null = null;
 
-  private readonly autoOperator: boolean;
-  private readonly decisionMin: number;
+  autoOperator: boolean;
+  /** Escalation waiting on a human click (only when `autoOperator` is off). */
+  awaitingDecision: ReceivedEscalation | null = null;
+  readonly decisionMin: number;
+  readonly flightRules: FlightRules = MARS_DEMO_BRIEFING.flightRules;
+
+  private readonly decisions: DecisionBook;
+  private readonly groundSafetyCheck: boolean;
   private ticks = 0;
   private lastTelemetryAt = 0;
-  private pendingDecision: { at: number; escalation: ReceivedEscalation } | null = null;
+  private pendingDecision: { at: number; escalation: ReceivedEscalation; optionId: string } | null = null;
+  private holdRequested = false;
   /** Baseline only: the contingency plan the baseline operator reasons from when replanning. */
   private shadowPlan: Plan | null = null;
 
@@ -122,10 +141,14 @@ export class Sim {
     mode = 'contingency',
     autoOperator = false,
     decisionMin = OPERATOR_DECISION_MIN,
+    decisions = new Map(),
+    groundSafetyCheck = true,
   }: SimOptions = {}) {
+    this.groundSafetyCheck = groundSafetyCheck;
     this.mode = mode;
     this.autoOperator = autoOperator;
     this.decisionMin = decisionMin;
+    this.decisions = decisions;
     this.map = generateMap(seed);
     this.mission = buildMarsMission(this.map);
     this.link = new DelayLink(oneWayDelayMin);
@@ -146,8 +169,34 @@ export class Sim {
       uplinks: [],
       escalations: [],
       blockedBeforeUplink: 0,
+      lastBlocked: null,
       completionConfirmedAt: null,
     };
+  }
+
+  /** The pre-uplink safety check, run against what the ground last heard from the rover. */
+  checkSafety(plan: Plan): SafetyReport {
+    const { pos, batteryPct, discovered } = this.ground.lastState;
+    return checkPlanSafety(
+      plan,
+      this.map,
+      this.flightRules,
+      { pos, batteryPct, knownObstacles: discovered },
+      this.scenario.irreversibleActions,
+    );
+  }
+
+  /** The operator's one-click answer to the escalation on screen. */
+  decide(optionId: string): void {
+    const escalation = this.awaitingDecision;
+    if (!escalation || !escalation.packet.options.some((o) => o.id === optionId)) return;
+    this.awaitingDecision = null;
+    this.pendingDecision = { at: this.now + this.decisionMin, escalation, optionId };
+  }
+
+  /** The answer being drafted, if one is scheduled to go up. */
+  get pendingAnswer(): { at: number; optionId: string } | null {
+    return this.pendingDecision && { at: this.pendingDecision.at, optionId: this.pendingDecision.optionId };
   }
 
   get now(): number {
@@ -194,16 +243,26 @@ export class Sim {
     return this.sendPlan(toConventional(parsed.data, nominalFlow(parsed.data), BASELINE_PLAN_ID, 1));
   }
 
-  /** Ground boundary: only a schema-valid plan is uplinked. */
+  /** Ground boundary: only a schema-valid plan that passes the safety validator is uplinked. */
   sendPlan(input: unknown): SendResult {
     const parsed = this.planSchema.safeParse(input);
     if (!parsed.success) {
       const errors = formatIssues(parsed.error);
       this.ground.blockedBeforeUplink++;
       this.groundLog.push({ t: this.now, text: `Plan rejected before uplink: ${errors.join('; ')}` });
-      return { ok: false, errors };
+      return { ok: false, errors, unsafe: false };
     }
     const plan = parsed.data;
+    const safety = this.checkSafety(plan);
+    if (this.groundSafetyCheck && !safety.ok) {
+      this.ground.blockedBeforeUplink++;
+      this.ground.lastBlocked = { at: this.now, planId: plan.planId, version: plan.version, reasons: safety.reasons };
+      this.groundLog.push({
+        t: this.now,
+        text: `BLOCKED before uplink: ${plan.planId} v${plan.version}. ${safety.reasons.join(' ')}`,
+      });
+      return { ok: false, errors: safety.reasons, unsafe: true };
+    }
     const msg = this.link.up.send({ kind: 'plan', plan }, this.now);
     this.startedAt ??= this.now;
     this.ground.currentPlan = plan;
@@ -222,12 +281,18 @@ export class Sim {
     return { ok: true, bytes: msg.bytes };
   }
 
-  stepTo(simTime: number): void {
+  /** Returns true if it stopped early because an escalation now needs the operator. */
+  stepTo(simTime: number): boolean {
     const target = Math.floor(simTime * TICKS_PER_MIN + 1e-6);
     while (this.ticks < target) {
       this.ticks++;
       this.tick(1 / TICKS_PER_MIN);
+      if (this.holdRequested) {
+        this.holdRequested = false;
+        return true;
+      }
     }
+    return false;
   }
 
   private tick(dt: number): void {
@@ -236,7 +301,7 @@ export class Sim {
     this.executor.tick(dt, now);
     if (now - this.lastTelemetryAt >= TELEMETRY_PERIOD_MIN - EPS) this.sendTelemetry();
     for (const msg of this.link.down.takeDue(now)) this.receiveDownlink(msg);
-    if (this.pendingDecision && now >= this.pendingDecision.at - EPS) this.decide();
+    if (this.pendingDecision && now >= this.pendingDecision.at - EPS) this.executeDecision();
   }
 
   // --- rover side ------------------------------------------------------------
@@ -304,7 +369,12 @@ export class Sim {
         t: now,
         text: `${this.mode === 'baseline' ? 'STOPPED' : 'ESCALATION'} at ${parsed.data.stepId} (${ago} min ago): ${parsed.data.whatHappened}`,
       });
-      if (this.autoOperator) this.pendingDecision = { at: now + this.decisionMin, escalation };
+      if (this.autoOperator) {
+        this.pendingDecision = { at: now + this.decisionMin, escalation, optionId: parsed.data.recommendation };
+      } else {
+        this.awaitingDecision = escalation;
+        this.holdRequested = true;
+      }
       return;
     }
 
@@ -315,21 +385,28 @@ export class Sim {
     }
   }
 
-  private decide(): void {
-    const { escalation } = this.pendingDecision!;
+  private executeDecision(): void {
+    const { escalation, optionId } = this.pendingDecision!;
     this.pendingDecision = null;
-    const plan = this.mode === 'contingency' ? this.answerEscalation(escalation) : this.replanBaseline(escalation);
+    const plan =
+      this.mode === 'contingency' ? this.answerEscalation(escalation, optionId) : this.replanBaseline(escalation);
     if (!plan) {
       this.groundLog.push({ t: this.now, text: `Operator: no amendment possible for ${escalation.packet.stepId}; rover keeps holding` });
       return;
     }
-    this.sendPlan(plan);
+    if (!this.sendPlan(plan).ok && !this.autoOperator) {
+      // The validator refused that answer; the rover is still holding, so ask again.
+      this.awaitingDecision = escalation;
+      this.holdRequested = true;
+    }
   }
 
-  /** Our system: one reply. The operator takes the rover's recommendation as a plan amendment. */
-  private answerEscalation({ packet }: ReceivedEscalation): Plan | null {
-    const option = packet.options.find((o) => o.id === packet.recommendation)!;
-    this.groundLog.push({ t: this.now, text: `Operator picks ${option.id} (recommended): ${option.label}` });
+  /** Our system: one reply. The chosen option becomes a plan amendment. */
+  private answerEscalation({ packet, condition }: ReceivedEscalation, optionId: string): Plan | null {
+    const option = packet.options.find((o) => o.id === optionId)!;
+    const rec = option.id === packet.recommendation ? ' (recommended)' : '';
+    this.groundLog.push({ t: this.now, text: `Operator picks ${option.id}${rec}: ${option.label}` });
+    this.decisions.set(decisionKey(packet.stepId, condition), option.label);
     return amendPlan(this.ground.currentPlan!, packet, option.id);
   }
 
@@ -362,11 +439,17 @@ export class Sim {
         return amended ? resequence(amended, amended.steps) : null;
       }
       case 'escalate': {
-        const option = packet.options.find((o) => o.id === packet.recommendation)!;
+        // Same call our operator made at this point, if they've made it; otherwise the rover's recommendation.
+        const chosen = this.decisions.get(decisionKey(packet.stepId, condition));
+        const option =
+          packet.options.find((o) => o.label === chosen) ?? packet.options.find((o) => o.id === packet.recommendation)!;
         const amended = amendPlan(shadow, packet, option.id);
         if (!amended) return null;
         this.shadowPlan = amended;
-        this.groundLog.push({ t: this.now, text: `Operator replans: ${option.label}` });
+        this.groundLog.push({
+          t: this.now,
+          text: `Operator replans: ${option.label}${chosen === option.label ? ' (same call as ours)' : ''}`,
+        });
         return resequence(amended, nominalFlow(amended));
       }
     }

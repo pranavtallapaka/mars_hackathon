@@ -7,9 +7,12 @@ interface ClockBarProps {
   clock: SimClock;
   delayMin: number;
   onReset: () => void;
+  awaitingDecision: boolean;
+  autoAnswer: boolean;
+  onAutoAnswer: (on: boolean) => void;
 }
 
-export function ClockBar({ clock, delayMin, onReset }: ClockBarProps) {
+export function ClockBar({ clock, delayMin, onReset, awaitingDecision, autoAnswer, onAutoAnswer }: ClockBarProps) {
   return (
     <div className="clockbar">
       <div className="clock">
@@ -38,6 +41,11 @@ export function ClockBar({ clock, delayMin, onReset }: ClockBarProps) {
           </button>
         ))}
       </div>
+      <label className="toggle small">
+        <input type="checkbox" checked={autoAnswer} onChange={(e) => onAutoAnswer(e.target.checked)} />
+        Auto-answer escalations (scripted operator)
+      </label>
+      {awaitingDecision && <span className="decision-flag">Paused: escalation needs your decision</span>}
       <div className="clock-meta">
         <span>
           1 real s = {clock.simMinPerRealSec * clock.speed} sim min

@@ -10,8 +10,9 @@ const DELAY = 8;
 type PlanJson = { limits: { batteryFloorPct: number }; steps: Record<string, unknown>[] };
 const demoPlan = () => structuredClone(DEMO_PLAN) as PlanJson;
 
+// Onboard limits are the second layer, so these tests switch off the ground validator to reach them.
 function run(plan: unknown, minutes: number) {
-  const sim = new Sim({ seed: 42, oneWayDelayMin: DELAY });
+  const sim = new Sim({ seed: 42, oneWayDelayMin: DELAY, groundSafetyCheck: false });
   expect(sim.sendPlan(plan).ok).toBe(true);
   const visited: Vec[] = [];
   for (let tick = 1; tick <= minutes * TICKS_PER_MIN; tick++) {
