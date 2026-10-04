@@ -1,4 +1,7 @@
+import { applyEnvelope, classifyTerrain, type Envelope, type TerrainClass } from '../../../shared/envelope/schema';
 import type { MissionContext, SolState } from '../../../shared/envelope/types';
+import { createPlanSchema, type Plan } from '../../../shared/plan';
+import { MARS_SURFACE } from '../../../shared/scenario';
 import { DEMO_PLAN } from './mars/mission';
 import { cellAt, zoneAt } from './grid';
 import { Sim, type Metrics, type SimMode } from './sim';
@@ -15,6 +18,7 @@ export interface CampaignOptions {
   runs?: number;
   baseSeed?: number;
   plan?: unknown;
+  envelope?: Envelope;
   iteration?: number;
 }
 
@@ -98,6 +102,7 @@ function modeFor(side: CampaignSide): SimMode {
   return side === 'envelope' ? 'contingency' : 'baseline';
 }
 
+/** Product-layer unsafe: hazard or no-go breached, battery floor breached, irreversible without approval, stuck with no recovery. */
 export function inspectUnsafe(
   sim: Sim,
   side: CampaignSide,
@@ -166,6 +171,11 @@ function runSolMission(
   return { solIndex: sol.solIndex, skipped: null, seed, metrics: sim.metrics, failures };
 }
 
+function asPlan(plan: unknown): Plan | null {
+  const parsed = createPlanSchema(MARS_SURFACE).safeParse(plan);
+  return parsed.success ? parsed.data : null;
+}
+
 export function runCampaign(
   ctx: MissionContext,
   side: CampaignSide,
@@ -173,14 +183,19 @@ export function runCampaign(
   {
     baseSeed = CAMPAIGN_BASE_SEED,
     plan = DEMO_PLAN,
-  }: Pick<CampaignOptions, 'baseSeed' | 'plan'> = {},
+    envelope,
+  }: Pick<CampaignOptions, 'baseSeed' | 'plan' | 'envelope'> = {},
 ): CampaignRun {
   const runSeed = (baseSeed + runIndex) >>> 0;
   const terrain = campaignTerrain(ctx);
+  const terrainClass: TerrainClass = classifyTerrain(ctx.terrain);
+  const parsed = side === 'envelope' && envelope ? asPlan(plan) : null;
   const decisions = new Map<string, string>();
   const sols: SolOutcome[] = [];
   for (const sol of ctx.sols) {
-    sols.push(runSolMission(sol, side, runIndex, runSeed, terrain, plan, decisions));
+    const used =
+      parsed && envelope ? applyEnvelope(parsed, envelope, { terrain: terrainClass, comm: sol.comm }) : plan;
+    sols.push(runSolMission(sol, side, runIndex, runSeed, terrain, used, decisions));
   }
   const operational = sols.filter((s) => s.skipped === null);
   const failures = sols.flatMap((s) => s.failures);
@@ -204,7 +219,7 @@ export function runCampaign(
 export function runCampaignPair(
   ctx: MissionContext,
   runIndex: number,
-  opts?: Pick<CampaignOptions, 'baseSeed' | 'plan'>,
+  opts?: Pick<CampaignOptions, 'baseSeed' | 'plan' | 'envelope'>,
 ): { baseline: CampaignRun; envelope: CampaignRun } {
   return {
     baseline: runCampaign(ctx, 'baseline', runIndex, opts),
@@ -260,7 +275,7 @@ export function runCampaignRange(
   ctx: MissionContext,
   from: number,
   to: number,
-  opts: Pick<CampaignOptions, 'baseSeed' | 'plan'> = {},
+  opts: Pick<CampaignOptions, 'baseSeed' | 'plan' | 'envelope'> = {},
 ): { baseline: CampaignRun; envelope: CampaignRun }[] {
   const pairs: { baseline: CampaignRun; envelope: CampaignRun }[] = [];
   for (let i = from; i < to; i++) pairs.push(runCampaignPair(ctx, i, opts));
@@ -272,6 +287,6 @@ export function runCampaignBatch(ctx: MissionContext, opts: CampaignOptions = {}
   const baseSeed = opts.baseSeed ?? CAMPAIGN_BASE_SEED;
   const iteration = opts.iteration ?? 0;
   const t0 = performance.now();
-  const pairs = runCampaignRange(ctx, 0, runs, { baseSeed, plan: opts.plan });
+  const pairs = runCampaignRange(ctx, 0, runs, { baseSeed, plan: opts.plan, envelope: opts.envelope });
   return summarizeCampaigns(ctx, pairs, performance.now() - t0, { baseSeed, iteration });
 }

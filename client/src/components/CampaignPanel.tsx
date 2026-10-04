@@ -55,6 +55,8 @@ export function CampaignPanel({ concept, contextId }: CampaignPanelProps) {
 
   const base = latest?.baseline;
   const ours = latest?.envelope;
+  const saved = base && ours ? base.meanRoundTrips - ours.meanRoundTrips : 0;
+  const accepted = ours?.unsafe === 0;
 
   return (
     <section className="envelope-campaign">
@@ -62,8 +64,8 @@ export function CampaignPanel({ concept, contextId }: CampaignPanelProps) {
         <div>
           <h2>Campaign simulator</h2>
           <p className="muted small">
-            {CAMPAIGN_RUNS} seeded campaigns through this window · cached plan · real delay, conjunction and daylight.
-            Envelope here is the contingency plan; A3 will swap in a scored envelope.
+            {CAMPAIGN_RUNS} seeded campaigns through this window · hand-written envelope scored against baseline.
+            Score is trips saved if envelope-side unsafe is zero.
           </p>
         </div>
         <button type="button" className="primary" disabled={busy} onClick={() => void run()}>
@@ -78,8 +80,9 @@ export function CampaignPanel({ concept, contextId }: CampaignPanelProps) {
         <div className="batch-body">
           <p className="batch-verdict">
             <strong>
-              {fmt(base.meanRoundTrips - ours.meanRoundTrips, 1)} fewer trips · {ours.unsafe} / {ours.runs} envelope
-              unsafe
+              {accepted
+                ? `Score ${fmt(saved, 1)} trips saved · 0 unsafe`
+                : `Rejected · ${ours.unsafe} / ${ours.runs} envelope unsafe`}
             </strong>
           </p>
           <p className="muted small">

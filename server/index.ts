@@ -9,6 +9,7 @@ import { sceneSchema } from '../shared/plan';
 import { MARS_SURFACE } from '../shared/scenario';
 import type { SceneVariant } from '../shared/scene';
 import { loadMissionContext } from '../shared/envelope/context';
+import { HANDWRITTEN_ENVELOPE } from '../shared/envelope/schema';
 import type { SiteId } from '../shared/envelope/types';
 import { grokModelCall } from './grok';
 import { cachedReconstruction, reconstructScene, RECON_DIR } from './imagine';
@@ -93,7 +94,12 @@ app.post('/api/campaign', async (req, res) => {
   }
 
   try {
-    const report = await runCampaignBatchParallel(context, { runs, baseSeed: seed, iteration });
+    const report = await runCampaignBatchParallel(context, {
+      runs,
+      baseSeed: seed,
+      iteration,
+      envelope: HANDWRITTEN_ENVELOPE,
+    });
     try {
       await persistCampaign(report);
       console.log(

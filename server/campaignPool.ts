@@ -54,7 +54,9 @@ export async function runCampaignBatchParallel(
   const t0 = performance.now();
   try {
     const chunks = await Promise.all(
-      chunkRanges(runs, workers).map((range) => runChunk({ ctx, ...range, baseSeed })),
+      chunkRanges(runs, workers).map((range) =>
+        runChunk({ ctx, ...range, baseSeed, envelope: opts.envelope }),
+      ),
     );
     return summarizeCampaigns(ctx, chunks.flat(), performance.now() - t0, { baseSeed, iteration });
   } catch {
