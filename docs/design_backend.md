@@ -4,10 +4,11 @@ Oct 3, 2026 · @Pt
 
 ## Status
 
-Concept stage. Core thesis and architecture are set; stack and sponsor tracks are chosen. Building in Cursor; this doc is the source of truth for where the idea stands.
+Building: Batches 0–5 and Stretch S1 are done; Batch 6 is next. Core thesis and architecture are set; stack and sponsor tracks are chosen. Building in Cursor; this doc is the source of truth for where the idea stands.
 
 | Date | Change | Note |
 | --- | --- | --- |
+| 2026-10-03 | S1 done; added S3 and S4 | First-person rover view and batch test mode added; no hard deadline; Batch 6 next for track eligibility |
 | 2026-10-03 | Added stretch batches | S1 real Mars data (HiRISE + ephemeris delays), S2 Scenario B lab; only Spacetime stays out of scope |
 | 2026-10-03 | Removed Scenario B | Mars surface is the only use case; space biology may be added back if time allows |
 | 2026-10-03 | Batch plan written | 9 batches for a 10-hour solo build; Scenario B moved to roadmap |
@@ -230,6 +231,8 @@ Live counters on both panes:
 
 The delay slider should be adjustable (3 to 22 minutes) so judges see the gap widen as Mars moves farther away.
 
+With Stretch S3, a first-person rover view ("Mars, now") sits beside mission control's stale view ("as of N min ago"), so the audience sees the rover act on information Earth doesn't have yet. With Stretch S4, a batch test across about 50 randomized missions backs the single demo run with aggregate numbers.
+
 ## Data sources
 
 Candidates from memory, not yet verified for the hackathon; confirm access and formats before building on them.
@@ -244,7 +247,15 @@ Candidates from memory, not yet verified for the hackathon; confirm access and f
 
 ## Build plan
 
-Solo build, about 10 hours. Core: 9 batches (9h15m). Stretch: S1 and S2 (3h15m). Core plus stretch is about 12h30m, more than the time available, so stretch work only happens if the core runs ahead of schedule. Work strictly in order; finish each batch's "done when" check and commit before starting the next.
+Solo build, no hard deadline. Batches 0–5 and Stretch S1 are done. Remaining work, in order:
+
+1. Landing-page token step (see the landing page design doc), if not done yet
+2. Batch 6: Grok Imagine (required for SpaceX track eligibility, so it goes first)
+3. Stretch S3: first-person rover view
+4. Batch 7: ElevenLabs voice
+5. Stretch S4: batch test mode
+6. Stretch S2: Scenario B lab
+7. Batch 8: polish and demo hardening (always last)
 
 **Instructions for Cursor:** read this whole doc first. Treat Build decisions and the plan schema as fixed. Do one batch per session, and don't build ahead.
 
@@ -313,9 +324,9 @@ Solo build, about 10 hours. Core: 9 batches (9h15m). Stretch: S1 and S2 (3h15m).
 
 ### Stretch batches
 
-Run these only if checkpoint 2 lands on time. Each must pass its own "done when" before the next starts. Batch 8 (polish) always runs last, after whatever stretch work got done.
+Stretch batches are part of the plan now that there is no hard deadline. Each must pass its own "done when" before the next starts, and Batch 8 (polish) always runs last.
 
-### Stretch S1 — Real Mars data (1:45)
+### Stretch S1 — Real Mars data (done)
 
 The SpaceX track asks for real space data in, so this is the highest-value stretch.
 
@@ -324,6 +335,27 @@ The SpaceX track asks for real space data in, so this is the highest-value stret
 - Load the heightmap into the sim in place of the synthetic map; keep the synthetic map as a fallback toggle
 - Real delays: compute Earth–Mars distance for a chosen date (e.g. the astronomy-engine npm package, offline), one-way delay = distance ÷ speed of light. A date picker replaces or drives the delay slider
 - **Done when:** the mission runs on real Jezero terrain, and picking a date sets the real delay for that day
+
+### Stretch S3 — First-person rover view (1:30–2:00)
+
+The point: show latency on screen. The rover's view (Mars, now) sits beside mission control's view (what Earth knows, as of N minutes ago). The audience watches the rover handle a problem Earth won't hear about for minutes.
+
+- **Render only:** React Three Fiber (+ drei). The sim stays the single source of truth; the 3D scene reads rover pose and state and draws them. No logic lives in the 3D layer
+- **Terrain:** mesh from the S1 heightmap at true scale, shaded from the HiRISE relief; fine procedural noise for close-up detail; Mars-colored haze in the distance and a low sun
+- **Camera:** about 2 m above the rover, facing its heading, interpolating smoothly between grid cells
+- **Scene:** obstacles as rocks at their cells; hazards and no-go zones as an amber ground tint; the planned route as a faint plot-blue line on the ground (landing page design tokens)
+- **Layout:** rover view labeled "Mars, now" beside the mission control panel (plan, escalations, map labeled "as of N min ago"). The baseline comparison stays in the 2D panes and counters
+- **One-hour stop rule:** if after 1 hour it doesn't look convincing at eye level, switch to a chase camera above the rover, or fall back to the 2D map
+- **Done when:** in the demo mission, the rover view shows it handling the staged obstacle while mission control's view still shows the earlier, stale state
+
+### Stretch S4 — Batch test mode (0:45)
+
+Turns one staged demo into evidence, and answers "you scripted the surprises."
+
+- Run the side-by-side comparison headless across about 50 missions with randomized surprise placement (seeded per run, so results are reproducible), fast-forwarding the sim clock with no rendering
+- Use the cached compiled plan for every run (no LLM calls), so the test measures the contingency and escalation logic; surprises the plan doesn't cover are escalated, which is the honest point
+- Report baseline vs. ours: average and spread of round trips, mission time, bytes downlinked, escalations, plus one chart
+- **Done when:** one button runs 50 missions in under a minute and shows the aggregate result
 
 ### Stretch S2 — Scenario B: autonomous biology lab (1:30)
 
@@ -346,8 +378,8 @@ The SpaceX track asks for real space data in, so this is the highest-value stret
 Cut from the top of this list first:
 
 1. Stretch S2 (Scenario B)
-2. HiRISE terrain from Stretch S1 (keep the synthetic map; keep real ephemeris delays, which are cheap)
-3. The rest of Stretch S1
+2. Stretch S4 (batch test mode; mention it as future work)
+3. Stretch S3 reduced to a chase camera, or dropped for the 2D map
 4. Voice reduced to the robot's escalation voice only
 5. Delay slider (keep one fixed delay)
 6. Validator reduced to the battery floor and no-go zone rules
@@ -364,7 +396,7 @@ Never cut: the baseline comparison, one-reply escalation, or Grok Imagine (requi
 
 | Risk | Mitigation |
 | --- | --- |
-| Scope: core + stretch is about 12h30m against 10 solo hours | Stretch only after checkpoint 2 lands on time; cut order drops stretch first; HiRISE download started early |
+| Scope creep now that there is no hard deadline | Fixed batch order; Batch 8 polish is never skipped; one-hour stop rule on the 3D view |
 | Grok Imagine API unavailable at the event | Confirm first thing; fallback is Grok Voice for the track requirement |
 | Judges ask about hallucinated reconstructions | Labeled illustrative; decisions run on structured data; real image on request |
 | Venue wifi breaks live voice | Typed command fallback always available |
