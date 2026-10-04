@@ -6,6 +6,7 @@ import { DEFAULT_CONCEPT, missionContextId } from '../../../shared/envelope/conc
 import { SITES } from '../../../shared/envelope/sites';
 import type { MissionConcept, MissionContext, SiteId, SolState } from '../../../shared/envelope/types';
 import { AppNav } from './AppNav';
+import { AgentPanel } from './AgentPanel';
 import { CampaignPanel } from './CampaignPanel';
 
 const COMM_LABEL: Record<SolState['comm'], string> = {
@@ -82,7 +83,7 @@ export function EnvelopePage() {
       <section className="envelope-concept">
         <h2>Mission concept</h2>
         <p className="muted small">
-          Load the real sources first. The agent (later) will propose an envelope from this context. This is not a
+          Load the real sources first. The agent proposes and tunes an envelope from this context. This is not a
           certification.
         </p>
         <div className="envelope-form">
@@ -224,6 +225,7 @@ export function EnvelopePage() {
             </section>
           )}
 
+          <AgentPanel concept={{ siteId, startDate, sols }} contextId={contextId} />
           <CampaignPanel concept={{ siteId, startDate, sols }} contextId={contextId} />
         </>
       )}

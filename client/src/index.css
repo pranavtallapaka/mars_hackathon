@@ -506,7 +506,8 @@ button.danger:hover {
 .envelope-sources h2,
 .envelope-sols h2,
 .envelope-bench h2,
-.envelope-campaign h2 {
+.envelope-campaign h2,
+.envelope-agent h2 {
   margin-bottom: 0.35rem;
 }
 

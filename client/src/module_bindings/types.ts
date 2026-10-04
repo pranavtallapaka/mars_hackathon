@@ -10,6 +10,47 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AgentJob = __t.object("AgentJob", {
+  id: __t.string(),
+  contextId: __t.string(),
+  status: __t.string(),
+  iteration: __t.u32(),
+  budgetIterations: __t.u32(),
+  budgetRuns: __t.u32(),
+  runsUsed: __t.u32(),
+  bestEnvelopeKey: __t.string(),
+  stopReason: __t.string(),
+  accepted: __t.bool(),
+  score: __t.f64(),
+  unsafe: __t.u32(),
+  source: __t.string(),
+  writtenAt: __t.string(),
+});
+export type AgentJob = __Infer<typeof AgentJob>;
+
+export const AgentLog = __t.object("AgentLog", {
+  id: __t.u64(),
+  jobId: __t.string(),
+  contextId: __t.string(),
+  seq: __t.u32(),
+  iteration: __t.u32(),
+  action: __t.string(),
+  change: __t.string(),
+  result: __t.string(),
+  writtenAt: __t.string(),
+});
+export type AgentLog = __Infer<typeof AgentLog>;
+
+export const AgentLogInput = __t.object("AgentLogInput", {
+  seq: __t.u32(),
+  iteration: __t.u32(),
+  action: __t.string(),
+  change: __t.string(),
+  result: __t.string(),
+  writtenAt: __t.string(),
+});
+export type AgentLogInput = __Infer<typeof AgentLogInput>;
+
 export const CampaignResult = __t.object("CampaignResult", {
   id: __t.string(),
   contextId: __t.string(),
@@ -41,6 +82,21 @@ export const DataSource = __t.object("DataSource", {
   note: __t.option(__t.string()),
 });
 export type DataSource = __Infer<typeof DataSource>;
+
+export const Envelope = __t.object("Envelope", {
+  id: __t.string(),
+  jobId: __t.string(),
+  contextId: __t.string(),
+  envelopeId: __t.string(),
+  version: __t.u32(),
+  json: __t.string(),
+  note: __t.string(),
+  accepted: __t.bool(),
+  score: __t.f64(),
+  unsafe: __t.u32(),
+  writtenAt: __t.string(),
+});
+export type Envelope = __Infer<typeof Envelope>;
 
 export const Failure = __t.object("Failure", {
   id: __t.u64(),

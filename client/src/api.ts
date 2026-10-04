@@ -81,6 +81,56 @@ export async function postMissionContext(concept: MissionConcept): Promise<Missi
   return body as MissionContextResult;
 }
 
+export interface AgentLogRow {
+  seq: number;
+  iteration: number;
+  action: string;
+  change: string;
+  result: string;
+}
+
+export interface AgentApiReport {
+  job: {
+    id: string;
+    contextId: string;
+    status: string;
+    iteration: number;
+    runsUsed: number;
+    stopReason: string;
+    accepted: boolean;
+    score: number;
+    unsafe: number;
+    source: string;
+    bestEnvelopeKey: string;
+  };
+  contextId: string;
+  best: unknown;
+  logs: AgentLogRow[];
+  tuningSeeds: number[];
+  finalSeed: number;
+  finalCheck: { accepted: boolean; score: number | null; unsafe: number } | null;
+}
+
+export interface AgentResult {
+  report: AgentApiReport;
+  persisted: boolean;
+}
+
+export async function postAgent(concept: {
+  siteId: MissionConcept['siteId'];
+  startDate: string;
+  sols: number;
+}): Promise<AgentResult> {
+  const res = await fetch('/api/agent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(concept),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error ?? `agent failed (HTTP ${res.status})`);
+  return json as AgentResult;
+}
+
 export async function postCampaign(body: CampaignRequest): Promise<CampaignResult> {
   const res = await fetch('/api/campaign', {
     method: 'POST',

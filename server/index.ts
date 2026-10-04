@@ -11,11 +11,17 @@ import type { SceneVariant } from '../shared/scene';
 import { loadMissionContext } from '../shared/envelope/context';
 import { HANDWRITTEN_ENVELOPE } from '../shared/envelope/schema';
 import type { SiteId } from '../shared/envelope/types';
-import { grokModelCall } from './grok';
+import { grokEnvelopePropose, grokModelCall } from './grok';
+import {
+  AGENT_MAX_ITERATIONS,
+  AGENT_MAX_RUNS,
+  AGENT_RUNS,
+  runAgentJob,
+} from '../client/src/sim/agent';
 import { cachedReconstruction, reconstructScene, RECON_DIR } from './imagine';
 import { cachedVoice, readVoiceFile, synthesize, transcribe } from './elevenlabs';
 import { runCampaignBatchParallel } from './campaignPool';
-import { persistCampaign, persistMissionContext, spacetimeConfig, spacetimeConnected } from './spacetime';
+import { persistAgentEvent, persistCampaign, persistMissionContext, spacetimeConfig, spacetimeConnected } from './spacetime';
 
 // The project's .env wins over stale keys exported in the user's shell.
 dotenv.config({ override: true, quiet: true });
@@ -111,6 +117,49 @@ app.post('/api/campaign', async (req, res) => {
       console.warn(`campaign: computed ${report.contextId} but persist failed: ${persistError}`);
       res.json({ report, persisted: false, persistError });
     }
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+app.post('/api/agent', async (req, res) => {
+  const siteId = typeof req.body?.siteId === 'string' ? req.body.siteId : '';
+  const startDate = typeof req.body?.startDate === 'string' ? req.body.startDate : '';
+  const sols = Number(req.body?.sols);
+  const runs = Number(req.body?.runs ?? AGENT_RUNS);
+  const maxIterations = Number(req.body?.maxIterations ?? AGENT_MAX_ITERATIONS);
+  const maxRuns = Number(req.body?.maxRuns ?? AGENT_MAX_RUNS);
+  if (!SITE_IDS.has(siteId as SiteId)) return res.status(400).json({ error: 'siteId must be jezero or oxia' });
+  if (!startDate) return res.status(400).json({ error: 'startDate is required' });
+  if (!Number.isInteger(sols)) return res.status(400).json({ error: 'sols must be an integer' });
+  if (!Number.isInteger(runs) || runs < 1 || runs > 50) return res.status(400).json({ error: 'runs must be 1–50' });
+  if (!Number.isInteger(maxIterations) || maxIterations < 1 || maxIterations > 12) {
+    return res.status(400).json({ error: 'maxIterations must be 1–12' });
+  }
+  if (!Number.isInteger(maxRuns) || maxRuns < runs) return res.status(400).json({ error: 'maxRuns must be ≥ runs' });
+
+  const useGrok = req.body?.useGrok !== false;
+  const apiKey = process.env.XAI_API_KEY;
+  const propose = useGrok && apiKey ? grokEnvelopePropose(apiKey, XAI_MODEL, XAI_REASONING_EFFORT) : undefined;
+
+  try {
+    const report = await runAgentJob({ siteId: siteId as SiteId, startDate, sols }, HORIZONS_CSV, {
+      runs,
+      maxIterations,
+      maxRuns,
+      propose,
+      onEvent: async (event) => {
+        try {
+          await persistAgentEvent(event);
+        } catch (err) {
+          console.warn(`agent persist failed: ${(err as Error).message}`);
+        }
+      },
+    });
+    console.log(
+      `agent: ${report.contextId} ${report.job.status} ${report.job.stopReason} · ${report.logs.length} log rows · source ${report.job.source}`,
+    );
+    res.json({ report, persisted: spacetimeConnected() });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }

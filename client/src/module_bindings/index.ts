@@ -34,17 +34,23 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ReplaceAgentLogsReducer from "./replace_agent_logs_reducer";
 import ReplaceFailuresReducer from "./replace_failures_reducer";
 import ReplaceSolConditionsReducer from "./replace_sol_conditions_reducer";
+import UpsertAgentJobReducer from "./upsert_agent_job_reducer";
 import UpsertCampaignResultReducer from "./upsert_campaign_result_reducer";
 import UpsertDataSourceReducer from "./upsert_data_source_reducer";
+import UpsertEnvelopeReducer from "./upsert_envelope_reducer";
 import UpsertMissionContextReducer from "./upsert_mission_context_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import AgentJobRow from "./agent_job_table";
+import AgentLogRow from "./agent_log_table";
 import CampaignResultRow from "./campaign_result_table";
 import DataSourceRow from "./data_source_table";
+import EnvelopeRow from "./envelope_table";
 import FailureRow from "./failure_table";
 import MissionContextRow from "./mission_context_table";
 import SolConditionsRow from "./sol_conditions_table";
@@ -53,6 +59,34 @@ import SolConditionsRow from "./sol_conditions_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  agentJob: __table({
+    name: 'agent_job',
+    indexes: [
+      { accessor: 'contextId', name: 'agent_job_context_id_idx_btree', algorithm: 'btree', columns: [
+        'contextId',
+      ] },
+      { accessor: 'id', name: 'agent_job_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'agent_job_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AgentJobRow),
+  agentLog: __table({
+    name: 'agent_log',
+    indexes: [
+      { accessor: 'id', name: 'agent_log_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'jobId', name: 'agent_log_job_id_idx_btree', algorithm: 'btree', columns: [
+        'jobId',
+      ] },
+    ],
+    constraints: [
+      { name: 'agent_log_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AgentLogRow),
   campaignResult: __table({
     name: 'campaign_result',
     indexes: [
@@ -78,6 +112,20 @@ const tablesSchema = __schema({
       { name: 'data_source_name_key', constraint: 'unique', columns: ['name'] },
     ],
   }, DataSourceRow),
+  envelope: __table({
+    name: 'envelope',
+    indexes: [
+      { accessor: 'id', name: 'envelope_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'jobId', name: 'envelope_job_id_idx_btree', algorithm: 'btree', columns: [
+        'jobId',
+      ] },
+    ],
+    constraints: [
+      { name: 'envelope_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, EnvelopeRow),
   failure: __table({
     name: 'failure',
     indexes: [
@@ -121,10 +169,13 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("replace_agent_logs", ReplaceAgentLogsReducer),
   __reducerSchema("replace_failures", ReplaceFailuresReducer),
   __reducerSchema("replace_sol_conditions", ReplaceSolConditionsReducer),
+  __reducerSchema("upsert_agent_job", UpsertAgentJobReducer),
   __reducerSchema("upsert_campaign_result", UpsertCampaignResultReducer),
   __reducerSchema("upsert_data_source", UpsertDataSourceReducer),
+  __reducerSchema("upsert_envelope", UpsertEnvelopeReducer),
   __reducerSchema("upsert_mission_context", UpsertMissionContextReducer),
 );
 

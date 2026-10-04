@@ -1,7 +1,9 @@
 import type { CampaignReport, CampaignSideReport } from '../client/src/sim/campaign';
+import type { AgentEvent, AgentJobSnapshot, AgentLogEntry } from '../client/src/sim/agent';
 import { DbConnection } from '../client/src/module_bindings';
 import { missionContextId } from '../shared/envelope/concept';
 import { dataSourceWrites, missionContextWrite, solConditionWrites } from '../shared/envelope/persist';
+import type { Envelope } from '../shared/envelope/schema';
 import type { MissionContext } from '../shared/envelope/types';
 
 const URI = process.env.SPACETIMEDB_URI ?? 'ws://127.0.0.1:3000';
@@ -123,4 +125,58 @@ export async function persistCampaign(report: CampaignReport): Promise<void> {
     contextId: report.contextId,
     rows: report.failures.filter((f) => f.side === 'envelope'),
   });
+}
+
+function jobWrite(job: AgentJobSnapshot, writtenAt: string) {
+  return {
+    id: job.id,
+    contextId: job.contextId,
+    status: job.status,
+    iteration: job.iteration,
+    budgetIterations: job.budgetIterations,
+    budgetRuns: job.budgetRuns,
+    runsUsed: job.runsUsed,
+    bestEnvelopeKey: job.bestEnvelopeKey,
+    stopReason: job.stopReason,
+    accepted: job.accepted,
+    score: job.score,
+    unsafe: job.unsafe,
+    source: job.source,
+    writtenAt,
+  };
+}
+
+export async function persistAgentEvent(event: AgentEvent): Promise<void> {
+  const conn = await getSpacetime();
+  const writtenAt = new Date().toISOString();
+  await conn.reducers.upsertAgentJob(jobWrite(event.job, writtenAt));
+  await conn.reducers.replaceAgentLogs({
+    jobId: event.job.id,
+    contextId: event.job.contextId,
+    rows: event.logs.map((row: AgentLogEntry) => ({
+      seq: row.seq,
+      iteration: row.iteration,
+      action: row.action,
+      change: row.change,
+      result: row.result,
+      writtenAt,
+    })),
+  });
+  if (event.envelope) {
+    const env: Envelope = event.envelope.envelope;
+    await conn.reducers.upsertEnvelope({
+      id: `${event.job.id}:v${env.version}`,
+      jobId: event.job.id,
+      contextId: event.job.contextId,
+      envelopeId: env.envelopeId,
+      version: env.version,
+      json: JSON.stringify(env),
+      note: env.note ?? '',
+      accepted: event.envelope.accepted,
+      score: event.envelope.score,
+      unsafe: event.envelope.unsafe,
+      writtenAt,
+    });
+  }
+  if (event.campaign) await persistCampaign(event.campaign);
 }

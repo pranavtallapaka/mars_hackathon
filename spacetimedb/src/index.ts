@@ -94,6 +94,58 @@ const failure = table(
   },
 );
 
+const agentJob = table(
+  { name: 'agent_job', public: true },
+  {
+    id: t.string().primaryKey(),
+    contextId: t.string().index('btree'),
+    status: t.string(),
+    iteration: t.u32(),
+    budgetIterations: t.u32(),
+    budgetRuns: t.u32(),
+    runsUsed: t.u32(),
+    bestEnvelopeKey: t.string(),
+    stopReason: t.string(),
+    accepted: t.bool(),
+    score: t.f64(),
+    unsafe: t.u32(),
+    source: t.string(),
+    writtenAt: t.string(),
+  },
+);
+
+const agentLog = table(
+  { name: 'agent_log', public: true },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    jobId: t.string().index('btree'),
+    contextId: t.string(),
+    seq: t.u32(),
+    iteration: t.u32(),
+    action: t.string(),
+    change: t.string(),
+    result: t.string(),
+    writtenAt: t.string(),
+  },
+);
+
+const envelope = table(
+  { name: 'envelope', public: true },
+  {
+    id: t.string().primaryKey(),
+    jobId: t.string().index('btree'),
+    contextId: t.string(),
+    envelopeId: t.string(),
+    version: t.u32(),
+    json: t.string(),
+    note: t.string(),
+    accepted: t.bool(),
+    score: t.f64(),
+    unsafe: t.u32(),
+    writtenAt: t.string(),
+  },
+);
+
 const FailureInput = t.object('FailureInput', {
   runIndex: t.u32(),
   seed: t.u32(),
@@ -103,6 +155,15 @@ const FailureInput = t.object('FailureInput', {
   reason: t.string(),
   detail: t.string(),
   side: t.string(),
+});
+
+const AgentLogInput = t.object('AgentLogInput', {
+  seq: t.u32(),
+  iteration: t.u32(),
+  action: t.string(),
+  change: t.string(),
+  result: t.string(),
+  writtenAt: t.string(),
 });
 
 const SolConditionInput = t.object('SolConditionInput', {
@@ -122,7 +183,16 @@ const SolConditionInput = t.object('SolConditionInput', {
   dataSource: t.string(),
 });
 
-const spacetimedb = schema({ dataSource, missionContext, solConditions, campaignResult, failure });
+const spacetimedb = schema({
+  dataSource,
+  missionContext,
+  solConditions,
+  campaignResult,
+  failure,
+  agentJob,
+  agentLog,
+  envelope,
+});
 export default spacetimedb;
 
 export const upsertDataSource = spacetimedb.reducer(
@@ -277,6 +347,106 @@ export const replaceFailures = spacetimedb.reducer(
         detail: row.detail,
         side: row.side,
       });
+    }
+  },
+);
+
+export const upsertAgentJob = spacetimedb.reducer(
+  {
+    id: t.string(),
+    contextId: t.string(),
+    status: t.string(),
+    iteration: t.u32(),
+    budgetIterations: t.u32(),
+    budgetRuns: t.u32(),
+    runsUsed: t.u32(),
+    bestEnvelopeKey: t.string(),
+    stopReason: t.string(),
+    accepted: t.bool(),
+    score: t.f64(),
+    unsafe: t.u32(),
+    source: t.string(),
+    writtenAt: t.string(),
+  },
+  (ctx, args) => {
+    const row = {
+      id: args.id,
+      contextId: args.contextId,
+      status: args.status,
+      iteration: args.iteration,
+      budgetIterations: args.budgetIterations,
+      budgetRuns: args.budgetRuns,
+      runsUsed: args.runsUsed,
+      bestEnvelopeKey: args.bestEnvelopeKey,
+      stopReason: args.stopReason,
+      accepted: args.accepted,
+      score: args.score,
+      unsafe: args.unsafe,
+      source: args.source,
+      writtenAt: args.writtenAt,
+    };
+    if (ctx.db.agentJob.id.find(args.id)) {
+      ctx.db.agentJob.id.update(row);
+    } else {
+      ctx.db.agentJob.insert(row);
+    }
+  },
+);
+
+export const replaceAgentLogs = spacetimedb.reducer(
+  { jobId: t.string(), contextId: t.string(), rows: t.array(AgentLogInput) },
+  (ctx, { jobId, contextId, rows }) => {
+    for (const existing of ctx.db.agentLog.jobId.filter(jobId)) {
+      ctx.db.agentLog.id.delete(existing.id);
+    }
+    for (const row of rows) {
+      ctx.db.agentLog.insert({
+        id: 0n,
+        jobId,
+        contextId,
+        seq: row.seq,
+        iteration: row.iteration,
+        action: row.action,
+        change: row.change,
+        result: row.result,
+        writtenAt: row.writtenAt,
+      });
+    }
+  },
+);
+
+export const upsertEnvelope = spacetimedb.reducer(
+  {
+    id: t.string(),
+    jobId: t.string(),
+    contextId: t.string(),
+    envelopeId: t.string(),
+    version: t.u32(),
+    json: t.string(),
+    note: t.string(),
+    accepted: t.bool(),
+    score: t.f64(),
+    unsafe: t.u32(),
+    writtenAt: t.string(),
+  },
+  (ctx, args) => {
+    const row = {
+      id: args.id,
+      jobId: args.jobId,
+      contextId: args.contextId,
+      envelopeId: args.envelopeId,
+      version: args.version,
+      json: args.json,
+      note: args.note,
+      accepted: args.accepted,
+      score: args.score,
+      unsafe: args.unsafe,
+      writtenAt: args.writtenAt,
+    };
+    if (ctx.db.envelope.id.find(args.id)) {
+      ctx.db.envelope.id.update(row);
+    } else {
+      ctx.db.envelope.insert(row);
     }
   },
 );

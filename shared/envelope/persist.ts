@@ -83,6 +83,46 @@ export function missionContextWrite(ctx: MissionContext, loadedAt: string): Miss
   };
 }
 
+export interface AgentJobWrite {
+  id: string;
+  contextId: string;
+  status: string;
+  iteration: number;
+  budgetIterations: number;
+  budgetRuns: number;
+  runsUsed: number;
+  bestEnvelopeKey: string;
+  stopReason: string;
+  accepted: boolean;
+  score: number;
+  unsafe: number;
+  source: string;
+  writtenAt: string;
+}
+
+export interface AgentLogWrite {
+  seq: number;
+  iteration: number;
+  action: string;
+  change: string;
+  result: string;
+  writtenAt: string;
+}
+
+export interface EnvelopeWrite {
+  id: string;
+  jobId: string;
+  contextId: string;
+  envelopeId: string;
+  version: number;
+  json: string;
+  note: string;
+  accepted: boolean;
+  score: number;
+  unsafe: number;
+  writtenAt: string;
+}
+
 export function solConditionWrites(ctx: MissionContext): SolConditionWrite[] {
   return ctx.sols.map((s) => ({
     solIndex: s.solIndex,
