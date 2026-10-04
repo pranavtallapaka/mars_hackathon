@@ -220,6 +220,15 @@ button.danger:hover {
   accent-color: var(--plot);
 }
 
+.toggle input[type='date'] {
+  font: inherit;
+  color: var(--ink);
+  background: var(--sheet);
+  border: 1px solid var(--relief);
+  border-radius: var(--radius);
+  padding: 0.1rem 0.3rem;
+}
+
 .decision-flag {
   padding: 0.2rem 0.6rem;
   border-radius: var(--radius);
@@ -621,6 +630,10 @@ button.danger:hover {
 
 .sw.rock {
   background: var(--terrain-rock);
+}
+
+.sw.relief {
+  background: linear-gradient(90deg, #8c9194, #eef0ee);
 }
 
 .sw.sand {

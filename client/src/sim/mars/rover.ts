@@ -335,7 +335,8 @@ export class MarsRover implements ScenarioRuntime {
         if (!boulder && cellAt(this.map, p) !== 'rock') continue;
         const d = chebyshev(p, this.pos);
         const kind = boulder ? 'boulder' : 'rock';
-        const where = `${d * CELL_METERS} m ${compass(this.pos, p)}`;
+        const meters = this.map.cellMeters ?? CELL_METERS;
+        const where = `${d * meters} m ${compass(this.pos, p)}`;
         const key = `${kind} ${where}`;
         const g = groups.get(key);
         if (g) g.count++;

@@ -84,7 +84,7 @@ export function MissionPane({
         path={rover.plannedPath}
         boulders={rover.discovered}
         hidden={rover.undiscovered}
-        caption={`Earth's view (dashed) ${staleText}`}
+        caption={`${sim.map.source?.label ?? 'Synthetic map'} · Earth's view (dashed) ${staleText}`}
       />
 
       <div className="views">

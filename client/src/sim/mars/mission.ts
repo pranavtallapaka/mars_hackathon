@@ -1,5 +1,5 @@
 import { CACHED_DEMO_PLAN } from '../../../../shared/missions/mars-demo';
-import { featureById, findPath } from '../grid';
+import { cellIndex, featureById, findPath } from '../grid';
 import type { SimMap, Vec } from '../types';
 
 export interface SiteProps {
@@ -26,6 +26,12 @@ export function buildMarsMission(map: SimMap): MarsMission {
   const route = findPath(map, map.roverStart, wpA.pos)!;
   const boulder = route[Math.floor(route.length * BOULDER_ROUTE_FRACTION)];
 
+  const slopeAt = (id: string, fallback: number) => {
+    const f = featureById(map, id);
+    if (!f || !map.slopesDeg) return fallback;
+    return Math.round(map.slopesDeg[cellIndex(map, f.pos)] * 10) / 10;
+  };
+
   return {
     hiddenObstacles: [boulder],
     sites: {
@@ -34,13 +40,13 @@ export function buildMarsMission(map: SimMap): MarsMission {
         confidence: 0.85,
         scene: {
           objects: ['layered outcrop face 1 m ahead'],
-          slopeDeg: 18,
+          slopeDeg: slopeAt('outcrop-1', 18),
           terrain: 'loose regolith right',
         },
       },
       'outcrop-2': {
         confidence: 0.8,
-        scene: { slopeDeg: 9, terrain: 'exposed bedrock' },
+        scene: { slopeDeg: slopeAt('outcrop-2', 9), terrain: 'exposed bedrock' },
       },
     },
   };

@@ -1,25 +1,30 @@
 import { useCallback, useEffect, useReducer, useState } from 'react';
 import type { Plan } from '../../shared/plan';
+import { DEFAULT_EPHEMERIS_DATE, earthMarsLightTime } from '../../shared/ephemeris';
 import { SimClock } from './sim/clock';
 import { Sim, type DecisionBook, type SendResult } from './sim/sim';
+import type { TerrainId } from './sim/types';
 
-// Caps a single frame so a backgrounded tab doesn't jump the sim forward on return.
 const MAX_FRAME_SEC = 0.25;
 
-/** One clock, two worlds: same seed, mission and delay; only the system differs. */
-const createEngine = (autoAnswer: boolean) => {
+const lightTime = (iso: string) => earthMarsLightTime(iso);
+
+const createEngine = (autoAnswer: boolean, delayMin: number, terrain: TerrainId) => {
   const decisions: DecisionBook = new Map();
   return {
     clock: new SimClock(),
-    baseline: new Sim({ mode: 'baseline', autoOperator: true, decisions }),
-    ours: new Sim({ mode: 'contingency', autoOperator: autoAnswer, decisions }),
+    baseline: new Sim({ mode: 'baseline', autoOperator: true, decisions, oneWayDelayMin: delayMin, terrain }),
+    ours: new Sim({ mode: 'contingency', autoOperator: autoAnswer, decisions, oneWayDelayMin: delayMin, terrain }),
   };
 };
 
 export function useSim() {
   const [autoAnswer, setAutoAnswerState] = useState(false);
-  const [engine, setEngine] = useState(() => createEngine(false));
+  const [ephemerisDate, setEphemerisDate] = useState(DEFAULT_EPHEMERIS_DATE);
+  const [terrain, setTerrainState] = useState<TerrainId>('jezero');
+  const [engine, setEngine] = useState(() => createEngine(false, lightTime(DEFAULT_EPHEMERIS_DATE).delayMin, 'jezero'));
   const [, rerender] = useReducer((n: number) => n + 1, 0);
+  const light = lightTime(ephemerisDate);
 
   useEffect(() => {
     let frame = 0;
@@ -29,7 +34,6 @@ export function useSim() {
       last = t;
       const { clock, ours, baseline } = engine;
       clock.advance(realDt);
-      // Freeze the shared clock when an escalation needs you; the decision is charged a fixed time instead.
       if (ours.stepTo(clock.now)) {
         clock.now = ours.now;
         clock.paused = true;
@@ -42,9 +46,15 @@ export function useSim() {
     return () => cancelAnimationFrame(frame);
   }, [engine]);
 
-  const reset = useCallback(() => setEngine(createEngine(autoAnswer)), [autoAnswer]);
+  const rebuild = useCallback(
+    (nextAnswer = autoAnswer, nextDate = ephemerisDate, nextTerrain = terrain) => {
+      setEngine(createEngine(nextAnswer, lightTime(nextDate).delayMin, nextTerrain));
+    },
+    [autoAnswer, ephemerisDate, terrain],
+  );
 
-  /** Ours goes through the validator first; the baseline only starts if ours was cleared to fly. */
+  const reset = useCallback(() => rebuild(), [rebuild]);
+
   const start = useCallback(
     (plan: Plan): SendResult => {
       const result = engine.ours.start(plan);
@@ -79,12 +89,34 @@ export function useSim() {
     [engine, decide],
   );
 
+  const setDate = useCallback(
+    (iso: string) => {
+      setEphemerisDate(iso);
+      rebuild(autoAnswer, iso, terrain);
+    },
+    [autoAnswer, terrain, rebuild],
+  );
+
+  const setTerrain = useCallback(
+    (next: TerrainId) => {
+      setTerrainState(next);
+      rebuild(autoAnswer, ephemerisDate, next);
+    },
+    [autoAnswer, ephemerisDate, rebuild],
+  );
+
   return {
     ...engine,
     started: engine.ours.startedAt !== null,
     awaitingDecision: engine.ours.awaitingDecision !== null,
     autoAnswer,
     setAutoAnswer,
+    ephemerisDate,
+    setDate,
+    terrain,
+    setTerrain,
+    delayMin: light.delayMin,
+    distanceKm: light.distanceKm,
     start,
     decide,
     requestImage,

@@ -1,18 +1,37 @@
 import { formatClock } from '../format';
 import type { SimClock } from '../sim/clock';
+import type { TerrainId } from '../sim/types';
 
 const SPEEDS = [0.5, 1, 2, 5, 10];
 
 interface ClockBarProps {
   clock: SimClock;
   delayMin: number;
+  ephemerisDate: string;
+  distanceKm: number;
+  terrain: TerrainId;
   onReset: () => void;
+  onDate: (iso: string) => void;
+  onTerrain: (terrain: TerrainId) => void;
   awaitingDecision: boolean;
   autoAnswer: boolean;
   onAutoAnswer: (on: boolean) => void;
 }
 
-export function ClockBar({ clock, delayMin, onReset, awaitingDecision, autoAnswer, onAutoAnswer }: ClockBarProps) {
+export function ClockBar({
+  clock,
+  delayMin,
+  ephemerisDate,
+  distanceKm,
+  terrain,
+  onReset,
+  onDate,
+  onTerrain,
+  awaitingDecision,
+  autoAnswer,
+  onAutoAnswer,
+}: ClockBarProps) {
+  const millionKm = (distanceKm / 1_000_000).toFixed(1);
   return (
     <div className="clockbar">
       <div className="clock">
@@ -42,6 +61,18 @@ export function ClockBar({ clock, delayMin, onReset, awaitingDecision, autoAnswe
         ))}
       </div>
       <label className="toggle small">
+        Date
+        <input type="date" value={ephemerisDate} onChange={(e) => e.target.value && onDate(e.target.value)} />
+      </label>
+      <div className="speeds">
+        <button className={terrain === 'jezero' ? 'active' : ''} onClick={() => onTerrain('jezero')}>
+          Jezero DTM
+        </button>
+        <button className={terrain === 'synthetic' ? 'active' : ''} onClick={() => onTerrain('synthetic')}>
+          Synthetic
+        </button>
+      </div>
+      <label className="toggle small">
         <input type="checkbox" checked={autoAnswer} onChange={(e) => onAutoAnswer(e.target.checked)} />
         Auto-answer escalations (scripted operator)
       </label>
@@ -51,7 +82,7 @@ export function ClockBar({ clock, delayMin, onReset, awaitingDecision, autoAnswe
           1 real s = {clock.simMinPerRealSec * clock.speed} sim min
         </span>
         <span>
-          One-way delay <strong>{delayMin} min</strong> · round trip <strong>{delayMin * 2} min</strong>
+          One-way delay <strong>{delayMin} min</strong> · {millionKm} million km · {ephemerisDate} light time
         </span>
       </div>
     </div>

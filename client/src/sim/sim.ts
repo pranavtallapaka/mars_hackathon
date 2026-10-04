@@ -18,12 +18,12 @@ import {
 } from './config';
 import { Executor } from './executor';
 import { DelayLink, type LinkMessage } from './link';
-import { generateMap } from './map';
+import { createMap } from './map';
 import { amendPlan, nominalFlow, toConventional } from './mars/amend';
 import { buildMarsMission, DEMO_PLAN, type MarsMission } from './mars/mission';
 import { parseOptionLabel } from './mars/options';
 import { MarsRover } from './mars/rover';
-import type { Downlink, RoverSnapshot, SimMap, Uplink } from './types';
+import type { Downlink, RoverSnapshot, SimMap, TerrainId, Uplink } from './types';
 import { checkPlanSafety, type SafetyReport } from './validator';
 import { REAL_IMAGE_BYTES, sceneBytes } from '../../../shared/scene';
 
@@ -98,6 +98,8 @@ export interface SimOptions {
   decisions?: DecisionBook;
   /** Off only to test the rover's onboard limits on plans the ground would have blocked. */
   groundSafetyCheck?: boolean;
+  /** `jezero` loads the HiRISE heightmap; tests keep the default synthetic map. */
+  terrain?: TerrainId;
 }
 
 export interface Metrics {
@@ -153,13 +155,14 @@ export class Sim {
     decisionMin = OPERATOR_DECISION_MIN,
     decisions = new Map(),
     groundSafetyCheck = true,
+    terrain = 'synthetic',
   }: SimOptions = {}) {
     this.groundSafetyCheck = groundSafetyCheck;
     this.mode = mode;
     this.autoOperator = autoOperator;
     this.decisionMin = decisionMin;
     this.decisions = decisions;
-    this.map = generateMap(seed);
+    this.map = createMap(seed, terrain);
     this.mission = buildMarsMission(this.map);
     this.link = new DelayLink(oneWayDelayMin);
     this.rover = new MarsRover(this.map, this.mission);

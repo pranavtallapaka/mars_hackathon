@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { SimMap, Vec } from '../sim/types';
 
 interface MapGridProps {
@@ -21,6 +22,15 @@ export function MapGrid({ map, rover, path = [], boulders = [], hidden = [], sta
   const boulderCells = new Set(boulders.map(key));
   const hiddenCells = new Set(hidden.map(key));
   const featureAt = new Map(map.features.map((f) => [key(f.pos), f]));
+  const elevs = map.elevations;
+  const elevMin = elevs?.reduce((a, b) => Math.min(a, b), Infinity);
+  const elevMax = elevs?.reduce((a, b) => Math.max(a, b), -Infinity);
+  const elevStyle = (i: number, cell: string): CSSProperties | undefined => {
+    if (cell !== 'ground' || !elevs || elevMin === undefined || elevMax === undefined || elevMax === elevMin) return undefined;
+    const t = (elevs[i] - elevMin) / (elevMax - elevMin);
+    const l = Math.round(226 - t * 110);
+    return { backgroundColor: `rgb(${l}, ${l}, ${l - 3})` };
+  };
 
   return (
     <div className="map" style={{ gridTemplateColumns: `repeat(${map.width}, 1fr)` }}>
@@ -34,8 +44,15 @@ export function MapGrid({ map, rover, path = [], boulders = [], hidden = [], sta
         if (feature) classes.push('feature', feature.kind);
         if (boulderCells.has(i)) classes.push('boulder');
         else if (hiddenCells.has(i)) classes.push('hidden-obstacle');
+        const title = [
+          feature ? `${feature.id}: ${feature.label}` : undefined,
+          map.elevations ? `${map.elevations[i].toFixed(1)} m` : undefined,
+          map.slopesDeg ? `slope ${map.slopesDeg[i].toFixed(1)}°` : undefined,
+        ]
+          .filter(Boolean)
+          .join(' · ');
         return (
-          <div key={i} className={classes.join(' ')} title={feature ? `${feature.id}: ${feature.label}` : undefined}>
+          <div key={i} className={classes.join(' ')} style={elevStyle(i, cell)} title={title || undefined}>
             {feature && <span className="tag">{feature.tag}</span>}
             {rover.x === x && rover.y === y && <span className={stale ? 'rover stale' : 'rover'} />}
             {ghost && ghost.x === x && ghost.y === y && <span className="rover stale" />}
@@ -51,6 +68,7 @@ export function MapLegend() {
     <div className="legend">
       <span><i className="sw rover-live" /> rover (true position)</span>
       <span><i className="sw rover-ghost" /> rover as Earth last heard</span>
+      <span><i className="sw relief" /> HiRISE elevation</span>
       <span><i className="sw rock" /> rock</span>
       <span><i className="sw sand" /> sand (no-go)</span>
       <span><i className="sw waypoint" /> waypoint</span>

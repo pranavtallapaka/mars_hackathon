@@ -29,6 +29,13 @@ export interface NoGoZone {
   rect: Rect;
 }
 
+export type TerrainId = 'synthetic' | 'jezero';
+
+export interface MapSource {
+  id: string;
+  label: string;
+}
+
 export interface SimMap {
   seed: number;
   width: number;
@@ -38,6 +45,11 @@ export interface SimMap {
   features: Feature[];
   noGoZones: NoGoZone[];
   roverStart: Vec;
+  /** Metres per cell. Synthetic maps use the config default. */
+  cellMeters?: number;
+  elevations?: number[];
+  slopesDeg?: number[];
+  source?: MapSource;
 }
 
 export interface RoverSnapshot {

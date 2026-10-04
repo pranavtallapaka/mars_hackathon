@@ -7,23 +7,48 @@ import { MissionPane } from './components/MissionPane';
 import { useSim } from './useSim';
 
 export default function App() {
-  const { clock, baseline, ours, started, awaitingDecision, autoAnswer, setAutoAnswer, start, decide, requestImage, reset } =
-    useSim();
+  const {
+    clock,
+    baseline,
+    ours,
+    started,
+    awaitingDecision,
+    autoAnswer,
+    setAutoAnswer,
+    ephemerisDate,
+    setDate,
+    terrain,
+    setTerrain,
+    delayMin,
+    distanceKm,
+    start,
+    decide,
+    requestImage,
+    reset,
+  } = useSim();
 
   return (
     <div className="app">
       <header className="topbar">
         <div>
           <h1>Mars Latency Mediation</h1>
-          <p className="subtitle">Baseline vs contingency plan · same clock, seed and mission</p>
+          <p className="subtitle">
+            Baseline vs contingency plan · same clock, seed and mission
+            {terrain === 'jezero' ? ' · Jezero HiRISE DTM' : ' · synthetic map'}
+          </p>
         </div>
         <HealthBadge />
       </header>
 
       <ClockBar
         clock={clock}
-        delayMin={ours.link.oneWayDelayMin}
+        delayMin={delayMin}
+        ephemerisDate={ephemerisDate}
+        distanceKm={distanceKm}
+        terrain={terrain}
         onReset={reset}
+        onDate={setDate}
+        onTerrain={setTerrain}
         awaitingDecision={awaitingDecision}
         autoAnswer={autoAnswer}
         onAutoAnswer={setAutoAnswer}

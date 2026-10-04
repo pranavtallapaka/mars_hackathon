@@ -1,7 +1,8 @@
+import jezeroMap from '../../../shared/mars/jezero.map.json';
 import { MARS_DEMO_BRIEFING } from '../../../shared/missions/mars-demo';
 import { findPath } from './grid';
 import { mulberry32 } from './rng';
-import type { CellType, Feature, NoGoZone, SimMap, Vec } from './types';
+import type { CellType, Feature, NoGoZone, SimMap, TerrainId, Vec } from './types';
 
 export const MAP_WIDTH = 24;
 export const MAP_HEIGHT = 16;
@@ -12,6 +13,28 @@ const MAX_ATTEMPTS = 100;
 const ROVER_START: Vec = MARS_DEMO_BRIEFING.roverStart;
 const FEATURES: Feature[] = MARS_DEMO_BRIEFING.features;
 const NO_GO_ZONES: NoGoZone[] = MARS_DEMO_BRIEFING.noGoZones;
+
+export function loadJezeroMap(): SimMap {
+  const elevations = jezeroMap.elevations.map((v) => v ?? 0);
+  const slopesDeg = jezeroMap.slopesDeg.map((v) => v ?? 0);
+  return {
+    seed: jezeroMap.seed,
+    width: jezeroMap.width,
+    height: jezeroMap.height,
+    cells: jezeroMap.cells as CellType[],
+    features: jezeroMap.features.map((f) => ({ ...f, pos: { ...f.pos }, kind: f.kind as Feature['kind'] })),
+    noGoZones: jezeroMap.noGoZones.map((z) => ({ ...z, rect: { ...z.rect } })),
+    roverStart: { ...jezeroMap.roverStart },
+    cellMeters: jezeroMap.cellMeters,
+    elevations,
+    slopesDeg,
+    source: { id: jezeroMap.source.productId, label: jezeroMap.source.site },
+  };
+}
+
+export function createMap(seed: number, terrain: TerrainId = 'synthetic'): SimMap {
+  return terrain === 'jezero' ? loadJezeroMap() : generateMap(seed);
+}
 
 export function generateMap(seed: number): SimMap {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
