@@ -55,12 +55,15 @@ class TimedRun implements StepRun {
 /** The Mars rover body: sensing, motion, battery and onboard hard limits. */
 export class MarsRover implements ScenarioRuntime {
   pos: Vec;
+  /** Radians. 0 faces north (−Z in the 3D view); clockwise toward east. */
+  heading = 0;
   batteryPct = 100;
   activity = 'idle';
   imagesTaken = 0;
   samplesCollected = 0;
   lastSafeWaypoint: { id: string; pos: Vec };
   readonly discovered: Vec[] = [];
+  private driveT = 0;
 
   private path: Vec[] = [];
   private readonly hidden: Set<number>;
@@ -73,6 +76,8 @@ export class MarsRover implements ScenarioRuntime {
     private readonly mission: MarsMission,
   ) {
     this.pos = { ...map.roverStart };
+    const aim = map.features.find((f) => f.id === 'wp-A') ?? map.features.find((f) => f.kind === 'target');
+    if (aim) this.face(aim.pos);
     const home = map.features.find((f) => f.kind === 'waypoint' && samePos(f.pos, map.roverStart));
     this.lastSafeWaypoint = { id: home?.id ?? 'start', pos: { ...map.roverStart } };
     this.hidden = new Set(mission.hiddenObstacles.map((p) => cellIndex(map, p)));
@@ -80,6 +85,17 @@ export class MarsRover implements ScenarioRuntime {
 
   get plannedPath(): readonly Vec[] {
     return this.path;
+  }
+
+  /** Cell-center pose with sub-cell interpolation while driving. Render-only. */
+  get pose(): { x: number; y: number; heading: number } {
+    const next = this.path[0];
+    if (!next || this.driveT <= 0) return { x: this.pos.x + 0.5, y: this.pos.y + 0.5, heading: this.heading };
+    return {
+      x: this.pos.x + 0.5 + (next.x - this.pos.x) * this.driveT,
+      y: this.pos.y + 0.5 + (next.y - this.pos.y) * this.driveT,
+      heading: this.heading,
+    };
   }
 
   get undiscovered(): Vec[] {
@@ -112,9 +128,16 @@ export class MarsRover implements ScenarioRuntime {
 
   stop(): void {
     this.path = [];
+    this.driveT = 0;
     this.waitTimer = 0;
     this.waitImages = 0;
     this.activity = 'stopped';
+  }
+
+  private face(to: Vec): void {
+    const dx = to.x - this.pos.x;
+    const dy = to.y - this.pos.y;
+    if (dx || dy) this.heading = Math.atan2(dx, -dy);
   }
 
   whileWaiting(tasks: readonly string[], dt: number): string[] {
@@ -174,6 +197,8 @@ export class MarsRover implements ScenarioRuntime {
   /** `floor` is null for an abort return, which must not be refused for low battery. */
   private beginDrive(path: Vec[], label: string, floor: number | null, note: string): StepStart {
     this.path = path;
+    this.driveT = 0;
+    if (this.path[0]) this.face(this.path[0]);
     const blocked = this.senseAhead(label);
     if (blocked) return blocked;
     this.activity = `driving to ${label}`;
@@ -187,12 +212,18 @@ export class MarsRover implements ScenarioRuntime {
           progress -= 1;
           this.drain(BATTERY_PCT_PER_CELL);
           this.noteWaypoint();
+          if (this.path[0]) this.face(this.path[0]);
           if (floor !== null && this.batteryPct < floor) {
+            this.driveT = 0;
             return { type: 'condition', condition: 'battery_below_floor', detail: `battery ${this.batteryPct.toFixed(1)}% below floor ${floor}%` };
           }
           const blocked = this.senseAhead(label);
-          if (blocked) return blocked;
+          if (blocked) {
+            this.driveT = 0;
+            return blocked;
+          }
         }
+        this.driveT = this.path.length ? progress : 0;
         if (this.path.length) return { type: 'running' };
         this.activity = `at ${label}`;
         return { type: 'done', note: `arrived at ${label}` };

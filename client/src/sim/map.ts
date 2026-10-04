@@ -14,10 +14,13 @@ const ROVER_START: Vec = MARS_DEMO_BRIEFING.roverStart;
 const FEATURES: Feature[] = MARS_DEMO_BRIEFING.features;
 const NO_GO_ZONES: NoGoZone[] = MARS_DEMO_BRIEFING.noGoZones;
 
+let jezeroCached: SimMap | null = null;
+
 export function loadJezeroMap(): SimMap {
+  if (jezeroCached) return jezeroCached;
   const elevations = jezeroMap.elevations.map((v) => v ?? 0);
   const slopesDeg = jezeroMap.slopesDeg.map((v) => v ?? 0);
-  return {
+  jezeroCached = {
     seed: jezeroMap.seed,
     width: jezeroMap.width,
     height: jezeroMap.height,
@@ -30,6 +33,7 @@ export function loadJezeroMap(): SimMap {
     slopesDeg,
     source: { id: jezeroMap.source.productId, label: jezeroMap.source.site },
   };
+  return jezeroCached;
 }
 
 export function createMap(seed: number, terrain: TerrainId = 'synthetic'): SimMap {

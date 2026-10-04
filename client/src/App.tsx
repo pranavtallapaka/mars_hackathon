@@ -1,3 +1,5 @@
+import { AppNav } from './components/AppNav';
+import { BatchPanel } from './components/BatchPanel';
 import { ClockBar } from './components/ClockBar';
 import { ComparisonBar } from './components/ComparisonBar';
 import { HealthBadge } from './components/HealthBadge';
@@ -37,7 +39,10 @@ export default function App() {
             {terrain === 'jezero' ? ' · Jezero HiRISE DTM' : ' · synthetic map'}
           </p>
         </div>
-        <HealthBadge />
+        <div className="topbar-side">
+          <AppNav current="control" />
+          <HealthBadge />
+        </div>
       </header>
 
       <ClockBar
@@ -55,6 +60,7 @@ export default function App() {
       />
       <IntentPanel started={started} checkPlan={(plan) => ours.checkSafety(plan)} onApprove={start} />
       <ComparisonBar baseline={baseline} ours={ours} />
+      <BatchPanel oneWayDelayMin={delayMin} terrain={terrain} />
       <MapLegend />
 
       <div className="panes">

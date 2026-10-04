@@ -4,10 +4,12 @@ Oct 3, 2026 · @Pt
 
 ## Status
 
-Building: Batches 0–5 and Stretch S1 are done; Batch 6 is next. Core thesis and architecture are set; stack and sponsor tracks are chosen. Building in Cursor; this doc is the source of truth for where the idea stands.
+Building: currently on A1 (real data ingestion for the autonomy envelope agent); D0 (SpacetimeDB) is next. Core thesis and architecture are set; stack and sponsor tracks are chosen. Building in Cursor; this doc is the source of truth for where the idea stands.
 
 | Date | Change | Note |
 | --- | --- | --- |
+| 2026-10-03 | Added SpacetimeDB | Data layer for the agent; new Batch D0 after A1; A2–A6 write to and subscribe from it |
+| 2026-10-03 | Added product layer | Autonomy envelope agent on its own page (/envelope); batches A1–A6; real data from Horizons, Mars24, HiRISE and Perseverance |
 | 2026-10-03 | S1 done; added S3 and S4 | First-person rover view and batch test mode added; no hard deadline; Batch 6 next for track eligibility |
 | 2026-10-03 | Added stretch batches | S1 real Mars data (HiRISE + ephemeris delays), S2 Scenario B lab; only Spacetime stays out of scope |
 | 2026-10-03 | Removed Scenario B | Mars surface is the only use case; space biology may be added back if time allows |
@@ -81,7 +83,7 @@ The operator never drives the robot; the operator states intent and answers well
 
 ## Tech stack and sponsors
 
-Stack: Cursor + Grok (ground compiler LLM + Imagine) + ElevenLabs. Each one does a job in the product; nothing is added just for a prize.
+Stack: Cursor + Grok (ground compiler LLM + Imagine) + ElevenLabs + SpacetimeDB. Each one does a job in the product; nothing is added just for a prize.
 
 | Tech | Role in product | Prize it qualifies for |
 | --- | --- | --- |
@@ -89,9 +91,10 @@ Stack: Cursor + Grok (ground compiler LLM + Imagine) + ElevenLabs. Each one does
 | Grok LLM | Ground compiler: intent → structured contingency plan | SpaceX track |
 | Grok Imagine | Ground-side scene reconstruction from compact robot descriptions | SpaceX track (satisfies Imagine-or-Voice requirement) |
 | ElevenLabs | Speech-to-text for operator intent; two text-to-speech voices | ElevenLabs sponsor prize, MLH ElevenLabs |
+| SpacetimeDB | Real-time data layer for the agent: real data with provenance, agent log, results, versioned envelopes, active envelope | Best use of Spacetime |
 | Grok Bot (process only) | Project planning | SpaceX bonus points |
 
-Also entered with no extra tech: Actually Intelligent (AI) track and Grand Prize. Parked for later: Spacetime as the real-time backend for the shared sim and delay link.
+Also entered with no extra tech: Actually Intelligent (AI) track and Grand Prize. SpacetimeDB is now the data layer for the autonomy envelope agent (see Product layer: Data layer).
 
 ### Grok Imagine: scene reconstruction
 
@@ -196,10 +199,86 @@ The `scene` field is what Grok Imagine renders on the ground.
 
 ### 4. Stack and demo determinism
 
-- **Stack:** React + TypeScript (Vite) frontend; small Node/Express backend that holds the Grok and ElevenLabs API keys. Keys never reach the client.
+- **Stack:** React + TypeScript (Vite) frontend; small Node/Express backend that holds the Grok and ElevenLabs API keys. Keys never reach the client. SpacetimeDB is the shared data store for the agent layer (see Product layer: Data layer).
 - **Validation:** plans and packets are validated against the schema (e.g. zod) at every boundary.
 - **Deterministic demo:** fixed map seed and one scripted mission with one staged surprise and one unsafe command.
 - **LLM fallback:** if Grok's plan fails validation after one retry, load a cached known-good plan for that mission.
+
+## Product layer: autonomy envelope agent
+
+The highlight of the project. Everything built so far proves that autonomy cuts round trips. This layer answers the question a space agency actually faces: **for this robot, at this site, in this time window, which decisions can it safely make on its own?** Today that comes from engineering judgment and review meetings; this product answers it with real data and simulation.
+
+### What it does
+
+**Input:** a mission concept, e.g. "Rover at the Jezero delta front, 30 sols, February–March 2028."
+
+**The agent loop:**
+
+1. **Ingest real data** for that site and window (see Data sources):
+   - HiRISE terrain: slopes, roughness, hazards
+   - JPL Horizons: per-sol delay, communication windows, solar conjunction
+   - Mars24: daylight and season at the site
+   - Perseverance traverse history: a rough benchmark for conventional operations
+2. **Propose an autonomy envelope:** which conditions the robot may handle alone, escalation thresholds, safety limits, and how these change by terrain class and communication state (normal, long gap, conjunction).
+3. **Stress-test it:** run thousands of simulated sols through the existing engine on the real terrain, with real communication windows and randomized surprises.
+4. **Tune and repeat:** widen the envelope where simulation shows it is safe; tighten it wherever any run ends badly. Stop at the widest envelope with zero unsafe outcomes.
+5. **Confirm on fresh runs:** re-test the final envelope on new random seeds it was never tuned on, so it isn't overfit to its own test runs.
+
+**Unsafe outcome** means any of: hazard or no-go zone breached, battery floor breached, irreversible action without approval, or rover stuck with no recovery.
+
+### Outputs
+
+- **The envelope:** machine-readable, an extension of the plan schema's limits and escalation rules, loadable straight into the executor.
+- **Evidence report:** expected round trips and sols saved vs. conventional operations; unsafe outcomes (0 of N); an escalation heat map over the real terrain; a timeline of risk windows (conjunction, low light, dust season); and the specific simulated failures that set each limit.
+
+### Agent design
+
+- Grok as the agent, with tools: `load_mission_context`, `propose_envelope`, `run_campaign(envelope, runs, seed)`, `get_failures`, `validate_envelope`
+- Every envelope the agent proposes passes the same safety validator as plans
+- Hard budgets: maximum iterations and maximum simulated runs per job
+- Every step is logged as a structured entry and shown live, e.g. "Widened detour limit to 80 m. 3 of 2,000 runs breached hazard near cell 41. Tightened to 60 m. 0 breaches."
+
+### Data layer: SpacetimeDB
+
+SpacetimeDB is the shared record for all real data, agent work and results. The Node backend still does the heavy work (sim workers, Grok and ElevenLabs calls, data processing) and writes results through reducers using the SpacetimeDB TypeScript client SDK. The React pages subscribe to tables and update live.
+
+- **Module language:** TypeScript (keep the module simple; TypeScript modules are new)
+- **Writes:** only through reducers. Reducers don't return values; read results back through subscriptions
+- **Reads:** pages subscribe with the SpacetimeDB React integration; no polling code
+
+| Table | Holds | Used by |
+| --- | --- | --- |
+| `data_source` | Each real dataset: name, version, retrieval date | Provenance panel on `/envelope` |
+| `mission_context` | Site, date window, pointers to terrain files | A1 output |
+| `sol_conditions` | Per sol: delay, communication state, sun elevation, season | Timeline on `/envelope`, A2 simulator |
+| `agent_job` | Status, iteration, budget used | `/envelope` |
+| `agent_log` | One row per agent step (action, change, result) | Live log on `/envelope` |
+| `campaign_result` | Aggregate metrics per agent iteration | Evidence report |
+| `failure` | Map cell and reason for each unsafe outcome | Heat map |
+| `envelope` | Versioned envelopes, linked to their job and data sources | Results, A6 |
+| `active_envelope` | The envelope loaded into mission control | Badge and executor on `/control` |
+
+**Keep out of SpacetimeDB:** raw terrain arrays (files; store path and hash), individual sim runs (store per-iteration totals and failures only), API keys. The sim engine never moves into the module.
+
+### Separate page
+
+The agent and all its results live on their own page, `/envelope`, apart from the simulation engine at `/control`, so mission control stays uncluttered. The only connections:
+
+- "Load into mission control" on `/envelope` opens `/control` with that envelope active
+- `/control` shows a small badge naming the active envelope (e.g. "Envelope: Jezero Feb–Mar 2028, v7")
+
+### Demo flow
+
+1. On `/envelope`, type the mission concept; the agent visibly loads each data source.
+2. It runs and tunes: the log scrolls, the heat map fills in over real Jezero terrain.
+3. It produces the envelope and evidence report.
+4. Click "Load into mission control": the live demo runs on the envelope the agent just designed.
+
+### Honesty rules
+
+- Never say "certify." The sim is simplified; the envelope is an evidence-backed recommendation.
+- Perseverance history is a rough benchmark only; its real pace also reflects science decisions and team scheduling the sim does not model.
+- The report states its own limits (simplified physics, sim-only surprises).
 
 ## Use cases
 
@@ -243,7 +322,10 @@ Candidates from memory, not yet verified for the hackathon; confirm access and f
 | Planetary ephemerides (astronomy-engine npm, or JPL Horizons) | Real Earth–Mars distance → one-way delay for a given date | Stretch S1 |
 | NASA Planetary Data System, rover imagery | Realistic scenes and science targets | Stretch S1 (optional) |
 | NASA GeneLab / Open Science Data Repository | Realistic parameters for the biology lab | Stretch S2 |
-| Sponsor resources | Grok (LLM + Imagine), ElevenLabs; see Tech stack | Core |
+| JPL Horizons CSV export | Per-sol delay, communication state and solar conjunction for a mission window | A1 |
+| Mars24 algorithm (NASA) | Sol, season, local solar time and sun elevation at the site | A1 |
+| Perseverance traverse (NASA rover location map data; verify source and format) | Rough benchmark for conventional operations pace | A1 |
+| Sponsor resources | Grok (LLM + Imagine), ElevenLabs, SpacetimeDB; see Tech stack | Core |
 
 ## Build plan
 
@@ -253,9 +335,10 @@ Solo build, no hard deadline. Batches 0–5 and Stretch S1 are done. Remaining w
 2. Batch 6: Grok Imagine (required for SpaceX track eligibility, so it goes first)
 3. Stretch S3: first-person rover view
 4. Batch 7: ElevenLabs voice
-5. Stretch S4: batch test mode
-6. Stretch S2: Scenario B lab
-7. Batch 8: polish and demo hardening (always last)
+5. Stretch S4: batch test mode (required by the agent)
+6. Agent batches: A1, D0 (SpacetimeDB setup), then A2–A6; the autonomy envelope agent on `/envelope` (the product layer and project highlight)
+7. Stretch S2: Scenario B lab
+8. Batch 8: polish and demo hardening (always last)
 
 **Instructions for Cursor:** read this whole doc first. Treat Build decisions and the plan schema as fixed. Do one batch per session, and don't build ahead.
 
@@ -357,6 +440,67 @@ Turns one staged demo into evidence, and answers "you scripted the surprises."
 - Report baseline vs. ours: average and spread of round trips, mission time, bytes downlinked, escalations, plus one chart
 - **Done when:** one button runs 50 missions in under a minute and shows the aggregate result
 
+### Agent batches A1–A6 (autonomy envelope agent)
+
+Builds the product layer (see Product layer: autonomy envelope agent). Requires Stretch S4: the agent's simulations run on the headless fast-forward mode. Order: A1, D0 (SpacetimeDB), then A2–A6. Everything in A5 lives on its own page, `/envelope`; do not add agent UI to `/control`.
+
+### A1 — Real data ingestion (1:30)
+
+- **Horizons loader:** read a JPL Horizons CSV export (Earth–Mars range, one-way light-time, Sun–Earth–Mars angle) for a date window; per-sol delay and communication state; conjunction when the angle falls below a configurable threshold
+- **Mars24 module:** for a site's latitude and longitude and a date, compute sol, Mars season (Ls), local solar time and sun elevation
+- **Site catalog:** Jezero (from S1) plus one more site, processed with the S1 terrain script
+- **Perseverance benchmark:** verify NASA's published traverse data first, then load it and derive simple conventional-ops stats (e.g. distance per sol)
+- **Done when:** given a site and date window, one function returns a `MissionContext` with terrain, per-sol communication state and delay, daylight, season and benchmark stats, each tagged with its data source
+
+### D0 — SpacetimeDB setup (1:15)
+
+Runs right after A1, before A2. See Product layer: Data layer for the full table list.
+
+- Install the SpacetimeDB CLI; run it locally (`spacetime start`)
+- TypeScript module with the `data_source`, `mission_context` and `sol_conditions` tables and reducers to write them
+- Generate TypeScript client bindings; connect the Node backend (writes) and the React app (subscriptions)
+- A1's `MissionContext` is written to SpacetimeDB as well as returned; each row tagged with its data source
+- **Done when:** loading a mission concept writes its context and per-sol conditions to SpacetimeDB, and a test page subscribed to `sol_conditions` shows them without a refresh
+
+### A2 — Campaign simulator (1:30)
+
+- Extend the S4 headless mode from single missions to multi-sol campaigns driven by a `MissionContext`: real per-sol delays, conjunction blackouts, daylight-only operations
+- Randomized surprises per run, seeded and reproducible; run many campaigns in parallel (worker threads)
+- Each run returns metrics (round trips, sols, bytes, escalations) and any unsafe outcomes, with where and why they happened. Per-iteration totals go to `campaign_result` and each unsafe outcome to `failure` in SpacetimeDB (not every individual run)
+- **Done when:** both baseline and envelope-driven campaigns run fast enough for the agent loop (target: about 1,000 runs per minute)
+
+### A3 — Envelope schema and scoring (1:00)
+
+- Envelope type: extends the plan schema's limits and escalation rules, keyed by terrain class (from slope and roughness) and communication state (normal, long gap, conjunction); zod-validated
+- Unsafe outcome checks, exactly as defined in the Product layer section
+- Score: maximize round trips saved vs. baseline, subject to zero unsafe outcomes
+- **Done when:** a hand-written envelope can be scored on a `MissionContext`, returning metrics and a list of failures
+
+### A4 — Agent loop (2:00)
+
+- Grok agent with tools: `load_mission_context`, `propose_envelope`, `run_campaign(envelope, runs, seed)`, `get_failures`, `validate_envelope`
+- Loop: propose → simulate → inspect failures → widen or tighten → repeat; stop when there are zero unsafe outcomes and improvement has flattened, or a budget is hit (max iterations, max simulated runs)
+- Final check on fresh seeds never used in tuning
+- Every step written as a structured log entry (action, change, result) to the SpacetimeDB `agent_log` table; job status in `agent_job`; each envelope version in `envelope`
+- **Done when:** for the Jezero demo concept, the agent converges on an envelope with 0 unsafe outcomes on the final check, and the log explains each change
+
+### A5 — Envelope page `/envelope` (1:30)
+
+- Mission concept form: site, date window, number of sols
+- Data panel: each source loaded, with provenance (HiRISE, JPL Horizons, Mars24, Perseverance)
+- Live agent log, heat map, timeline and results, all through SpacetimeDB subscriptions (no polling)
+- Escalation heat map over the real terrain
+- Timeline: communication windows, conjunction, daylight, season
+- Results: envelope summary and evidence report (round trips and sols saved vs. baseline, unsafe 0 of N, failures that set each limit); export as JSON and a printable report
+- Uses the shared design tokens from the landing page design doc
+- **Done when:** the full demo flow steps 1–3 run on this page without touching `/control`
+
+### A6 — Load into mission control (0:30)
+
+- "Load into mission control" opens `/control` with the envelope active; the executor uses its limits and escalation rules
+- `/control` shows a small badge naming the active envelope; nothing else in `/control` changes
+- **Done when:** the live demo runs on an agent-designed envelope, and removing it returns `/control` to the default plan behavior
+
 ### Stretch S2 — Scenario B: autonomous biology lab (1:30)
 
 - Setting: a life-detection lab on a Mars lander (not the ISS)
@@ -386,7 +530,7 @@ Cut from the top of this list first:
 
 Never cut: the baseline comparison, one-reply escalation, or Grok Imagine (required for the SpaceX track).
 
-**Out of scope for this build:** Spacetime (parked; revisit only if everything else is done).
+**Out of scope for this build:** nothing at the moment.
 
 ## Open questions and risks
 
@@ -403,3 +547,7 @@ Never cut: the baseline comparison, one-reply escalation, or Grok Imagine (requi
 | Crowded "AI in space" theme | Lead with the physics-aware framing and measured side-by-side numbers |
 | Judges cite existing autonomy (Perseverance AutoNav, AEGIS) | Differentiate on the intent → verified contingency plan layer, not navigation |
 | Onboard compute is weak (radiation-hardened chips) | Big model stays on the ground by design; onboard runs a lightweight executor |
+| Envelope agent overclaims ("certified safe") | Call it an evidence-backed recommendation; report states the sim's limits |
+| Agent tunes the envelope to its own test runs | Final check on fresh seeds never used in tuning |
+| Perseverance traverse data unavailable or in an unexpected format | Verify before A1; the agent still works without the benchmark |
+| SpacetimeDB learning curve; TypeScript modules are new | Keep the module to tables and simple reducers; compute stays in Node; read results through subscriptions, not reducer return values |

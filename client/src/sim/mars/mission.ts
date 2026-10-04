@@ -1,5 +1,7 @@
 import { CACHED_DEMO_PLAN } from '../../../../shared/missions/mars-demo';
-import { cellIndex, featureById, findPath } from '../grid';
+import { DEMO_SEED } from '../config';
+import { cellIndex, featureById, findPath, samePos } from '../grid';
+import { mulberry32 } from '../rng';
 import type { SimMap, Vec } from '../types';
 
 export interface SiteProps {
@@ -18,36 +20,67 @@ export interface MarsMission {
 
 export const DEMO_PLAN: unknown = CACHED_DEMO_PLAN;
 
-// Fraction along the route to wp-A where the staged boulder sits.
-const BOULDER_ROUTE_FRACTION = 0.6;
+// Fraction along the route to wp-A where the scripted demo boulder sits.
+const DEMO_BOULDER_FRACTION = 0.6;
 
-export function buildMarsMission(map: SimMap): MarsMission {
-  const wpA = featureById(map, 'wp-A')!;
-  const route = findPath(map, map.roverStart, wpA.pos)!;
-  const boulder = route[Math.floor(route.length * BOULDER_ROUTE_FRACTION)];
+function slopeAt(map: SimMap, id: string, fallback: number): number {
+  const f = featureById(map, id);
+  if (!f || !map.slopesDeg) return fallback;
+  return Math.round(map.slopesDeg[cellIndex(map, f.pos)] * 10) / 10;
+}
 
-  const slopeAt = (id: string, fallback: number) => {
-    const f = featureById(map, id);
-    if (!f || !map.slopesDeg) return fallback;
-    return Math.round(map.slopesDeg[cellIndex(map, f.pos)] * 10) / 10;
-  };
-
+function demoSites(map: SimMap, drillStallCm?: number): Record<string, SiteProps> {
   return {
-    hiddenObstacles: [boulder],
-    sites: {
-      'outcrop-1': {
-        drillStallCm: 4,
-        confidence: 0.85,
-        scene: {
-          objects: ['layered outcrop face 1 m ahead'],
-          slopeDeg: slopeAt('outcrop-1', 18),
-          terrain: 'loose regolith right',
-        },
-      },
-      'outcrop-2': {
-        confidence: 0.8,
-        scene: { slopeDeg: slopeAt('outcrop-2', 9), terrain: 'exposed bedrock' },
+    'outcrop-1': {
+      ...(drillStallCm !== undefined ? { drillStallCm } : {}),
+      confidence: 0.85,
+      scene: {
+        objects: ['layered outcrop face 1 m ahead'],
+        slopeDeg: slopeAt(map, 'outcrop-1', 18),
+        terrain: 'loose regolith right',
       },
     },
+    'outcrop-2': {
+      confidence: 0.8,
+      scene: { slopeDeg: slopeAt(map, 'outcrop-2', 9), terrain: 'exposed bedrock' },
+    },
   };
+}
+
+/** Cell along the path from `from` to `targetId`, excluding the endpoints. */
+export function cellOnRoute(map: SimMap, from: Vec, targetId: string, fraction: number): Vec | null {
+  const dest = featureById(map, targetId);
+  if (!dest) return null;
+  const route = findPath(map, from, dest.pos);
+  if (!route || route.length < 3) return null;
+  const i = Math.max(1, Math.min(route.length - 2, Math.floor(route.length * fraction)));
+  return route[i];
+}
+
+function pushUnique(into: Vec[], cell: Vec | null): void {
+  if (!cell || into.some((p) => samePos(p, cell))) return;
+  into.push(cell);
+}
+
+/** Ground truth for a seed. Seed 42 is the scripted demo; every other seed randomizes surprises. */
+export function buildMarsMission(map: SimMap, seed = DEMO_SEED): MarsMission {
+  if (seed === DEMO_SEED) {
+    return {
+      hiddenObstacles: [cellOnRoute(map, map.roverStart, 'wp-A', DEMO_BOULDER_FRACTION)!],
+      sites: demoSites(map, 4),
+    };
+  }
+
+  const rng = mulberry32(seed);
+  const hidden: Vec[] = [];
+  if (rng() < 0.8) {
+    pushUnique(hidden, cellOnRoute(map, map.roverStart, 'wp-A', 0.35 + rng() * 0.45));
+  }
+  // Alternate approach blocked: the cached plan's s1b has no further branch, so this escalates.
+  if (rng() < 0.25) {
+    pushUnique(hidden, cellOnRoute(map, map.roverStart, 'wp-A-alt', 0.4 + rng() * 0.4));
+  }
+
+  const drillStallCm = rng() < 0.3 ? undefined : 3 + Math.floor(rng() * 3);
+  return { hiddenObstacles: hidden, sites: demoSites(map, drillStallCm) };
 }

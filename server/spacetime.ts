@@ -1,0 +1,126 @@
+import type { CampaignReport, CampaignSideReport } from '../client/src/sim/campaign';
+import { DbConnection } from '../client/src/module_bindings';
+import { missionContextId } from '../shared/envelope/concept';
+import { dataSourceWrites, missionContextWrite, solConditionWrites } from '../shared/envelope/persist';
+import type { MissionContext } from '../shared/envelope/types';
+
+const URI = process.env.SPACETIMEDB_URI ?? 'ws://127.0.0.1:3000';
+const DB_NAME = process.env.SPACETIMEDB_DB_NAME ?? process.env.SPACETIMEDB_DB_ID ?? 'pranavtallapaka';
+const TOKEN = process.env.SPACETIMEDB_TOKEN;
+const CONNECT_MS = 8000;
+
+let connected: DbConnection | null = null;
+let connecting: Promise<DbConnection> | null = null;
+
+export function spacetimeConfig(): { uri: string; dbName: string } {
+  return { uri: URI, dbName: DB_NAME };
+}
+
+export function spacetimeConnected(): boolean {
+  return connected !== null;
+}
+
+export async function getSpacetime(): Promise<DbConnection> {
+  if (connected) return connected;
+  if (connecting) return connecting;
+
+  connecting = new Promise<DbConnection>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      connecting = null;
+      reject(new Error(`SpacetimeDB connect timed out (${URI} / ${DB_NAME})`));
+    }, CONNECT_MS);
+
+    let builder = DbConnection.builder().withUri(URI).withDatabaseName(DB_NAME);
+    if (TOKEN) builder = builder.withToken(TOKEN);
+
+    builder
+      .onConnect((conn) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        connected = conn;
+        connecting = null;
+        resolve(conn);
+      })
+      .onConnectError((_ctx, err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        connected = null;
+        connecting = null;
+        reject(err);
+      })
+      .onDisconnect(() => {
+        connected = null;
+        connecting = null;
+      })
+      .build();
+  });
+
+  return connecting;
+}
+
+export async function persistMissionContext(ctx: MissionContext): Promise<string> {
+  const conn = await getSpacetime();
+  const loadedAt = new Date().toISOString();
+  const id = missionContextId(ctx.concept);
+
+  for (const source of dataSourceWrites(ctx)) {
+    await conn.reducers.upsertDataSource(source);
+  }
+  await conn.reducers.upsertMissionContext(missionContextWrite(ctx, loadedAt));
+  await conn.reducers.replaceSolConditions({
+    contextId: id,
+    rows: solConditionWrites(ctx),
+  });
+  return id;
+}
+
+function resultId(report: CampaignReport, side: CampaignSideReport['side']): string {
+  return `${report.contextId}:${report.iteration}:${side}`;
+}
+
+function sideWrite(report: CampaignReport, side: CampaignSideReport, writtenAt: string) {
+  return {
+    id: resultId(report, side.side),
+    contextId: report.contextId,
+    iteration: report.iteration,
+    side: side.side,
+    runs: side.runs,
+    finished: side.finished,
+    unsafe: side.unsafe,
+    blackoutSols: side.blackoutSols,
+    nightSols: side.nightSols,
+    operationalSols: side.operationalSols,
+    meanRoundTrips: side.meanRoundTrips,
+    meanMissionMin: side.meanMissionMin,
+    meanBytesDown: side.meanBytesDown,
+    meanEscalations: side.meanEscalations,
+    sols: report.sols,
+    elapsedMs: report.elapsedMs,
+    seed: report.seed,
+    writtenAt,
+  };
+}
+
+export async function persistCampaign(report: CampaignReport): Promise<void> {
+  const conn = await getSpacetime();
+  const writtenAt = new Date().toISOString();
+  await conn.reducers.upsertCampaignResult(sideWrite(report, report.baseline, writtenAt));
+  await conn.reducers.upsertCampaignResult(sideWrite(report, report.envelope, writtenAt));
+  const baselineId = resultId(report, 'baseline');
+  const envelopeId = resultId(report, 'envelope');
+  await conn.reducers.replaceFailures({
+    resultId: baselineId,
+    contextId: report.contextId,
+    rows: report.failures.filter((f) => f.side === 'baseline'),
+  });
+  await conn.reducers.replaceFailures({
+    resultId: envelopeId,
+    contextId: report.contextId,
+    rows: report.failures.filter((f) => f.side === 'envelope'),
+  });
+}

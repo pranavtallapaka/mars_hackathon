@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
 import { RECONSTRUCTION_LABEL, formatDataBytes, sceneBytes, REAL_IMAGE_BYTES, type ReconstructionResult } from '../../../shared/scene';
-import { escalationReadback } from '../../../shared/voice';
-import { reconstructScene, speakText } from '../api';
+import { reconstructScene } from '../api';
 import { formatClock } from '../format';
 import type { ImageRequest, ReceivedEscalation } from '../sim/sim';
-import { playVoice, stopVoice } from '../voicePlayer';
-import { VoiceCue, type VoiceCueState } from './VoiceCue';
 
 interface EscalationViewProps {
   escalation: ReceivedEscalation;
@@ -22,8 +19,6 @@ interface EscalationViewProps {
   /** Present on the operator's pane: request the real camera frame. */
   onRequestImage?: (stepId: string) => void;
   imageRequest?: ImageRequest;
-  /** Play the rover voice. Only the operator pane, and only after the packet has arrived. */
-  speak?: boolean;
 }
 
 const SOURCE_LABEL: Record<ReconstructionResult['source'], string> = {
@@ -42,7 +37,6 @@ export function EscalationView({
   blockedReasons,
   onRequestImage,
   imageRequest,
-  speak = false,
 }: EscalationViewProps) {
   const { packet, receivedAt, bytes } = escalation;
   const awaiting = Boolean(onDecide);
@@ -52,7 +46,6 @@ export function EscalationView({
   const [recon, setRecon] = useState<ReconstructionResult | null>(null);
   const [frame, setFrame] = useState<ReconstructionResult | null>(null);
   const [reconError, setReconError] = useState<string | null>(null);
-  const [voice, setVoice] = useState<VoiceCueState>({ status: 'idle' });
 
   useEffect(() => {
     let cancelled = false;
@@ -75,37 +68,6 @@ export function EscalationView({
     };
   }, [packet.planId, packet.stepId, packet.simTime, onRequestImage]);
 
-  useEffect(() => {
-    if (!speak) {
-      setVoice({ status: 'idle' });
-      return;
-    }
-    let cancelled = false;
-    const label = 'Robot voice';
-    setVoice({ status: 'loading', label });
-    void speakText('rover', escalationReadback(packet)).then((r) => {
-      if (cancelled) return;
-      if (r.source === 'unavailable' || !r.url) {
-        setVoice({ status: 'unavailable', label, reason: r.reason });
-        return;
-      }
-      playVoice(r.url).then(
-        () => {
-          if (!cancelled) setVoice({ status: 'playing', label });
-        },
-        () => {
-          if (!cancelled) setVoice({ status: 'blocked', label, url: r.url! });
-        },
-      );
-    }).catch((err) => {
-      if (!cancelled) setVoice({ status: 'unavailable', label, reason: (err as Error).message });
-    });
-    return () => {
-      cancelled = true;
-      stopVoice();
-    };
-  }, [speak, packet.planId, packet.stepId, packet.simTime]);
-
   let status: string;
   if (awaiting) status = `Clock paused for your decision. Your answer is charged ${decisionMin} sim min, the same as the baseline's operator.`;
   else if (pending) status = `Drafting ${pending.optionId} as a plan amendment; uplinks at ${formatClock(pending.at)}.`;
@@ -125,7 +87,6 @@ export function EscalationView({
         </span>
       </div>
       <p className="what">{packet.whatHappened}</p>
-      <VoiceCue cue={voice} />
 
       <div className="recon">
         {recon?.url ? (

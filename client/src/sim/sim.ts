@@ -163,7 +163,7 @@ export class Sim {
     this.decisionMin = decisionMin;
     this.decisions = decisions;
     this.map = createMap(seed, terrain);
-    this.mission = buildMarsMission(this.map);
+    this.mission = buildMarsMission(this.map, seed);
     this.link = new DelayLink(oneWayDelayMin);
     this.rover = new MarsRover(this.map, this.mission);
     this.executor = new Executor(this.scenario, this.rover, {
@@ -438,8 +438,26 @@ export class Sim {
   private executeDecision(): void {
     const { escalation, optionId } = this.pendingDecision!;
     this.pendingDecision = null;
-    const plan =
+    let plan =
       this.mode === 'contingency' ? this.answerEscalation(escalation, optionId) : this.replanBaseline(escalation);
+    if (!plan && this.autoOperator) {
+      const skip = escalation.packet.options.find((o) => parseOptionLabel(o.label)?.kind === 'skip_step');
+      if (skip) {
+        plan =
+          this.mode === 'contingency' ? this.answerEscalation(escalation, skip.id) : this.replanBaseline(escalation, skip.id);
+      }
+    }
+    if (!plan && this.autoOperator && this.ground.currentPlan) {
+      const cur = this.ground.currentPlan;
+      const version = cur.version + 1;
+      plan = {
+        ...cur,
+        version,
+        intent: `${cur.intent} (amended: end plan)`,
+        steps: [{ id: `v${version}end`, action: 'hold', args: { minutes: 1 }, branches: [] }],
+      };
+      this.groundLog.push({ t: this.now, text: `Operator: nothing left to amend at ${escalation.packet.stepId}; closing the plan` });
+    }
     if (!plan) {
       this.groundLog.push({ t: this.now, text: `Operator: no amendment possible for ${escalation.packet.stepId}; rover keeps holding` });
       return;
@@ -464,7 +482,7 @@ export class Sim {
    * Baseline: the operator makes the same decision our contingency plan would have made,
    * only one round trip later. That keeps the comparison about timing, not judgment.
    */
-  private replanBaseline({ packet, condition }: ReceivedEscalation): Plan | null {
+  private replanBaseline({ packet, condition }: ReceivedEscalation, forceOptionId?: string): Plan | null {
     const shadow = this.shadowPlan!;
     const current = this.ground.currentPlan!;
     const version = current.version + 1;
@@ -492,8 +510,14 @@ export class Sim {
         // Same call our operator made at this point, if they've made it; otherwise the rover's recommendation.
         const chosen = this.decisions.get(decisionKey(packet.stepId, condition));
         const option =
-          packet.options.find((o) => o.label === chosen) ?? packet.options.find((o) => o.id === packet.recommendation)!;
-        const amended = amendPlan(shadow, packet, option.id);
+          (forceOptionId ? packet.options.find((o) => o.id === forceOptionId) : undefined) ??
+          packet.options.find((o) => o.label === chosen) ??
+          packet.options.find((o) => o.id === packet.recommendation)!;
+        let amended = amendPlan(shadow, packet, option.id);
+        if (!amended) {
+          const skip = packet.options.find((o) => parseOptionLabel(o.label)?.kind === 'skip_step');
+          if (skip) amended = amendPlan(shadow, packet, skip.id);
+        }
         if (!amended) return null;
         this.shadowPlan = amended;
         this.groundLog.push({

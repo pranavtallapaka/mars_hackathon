@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import express from 'express';
 import { compilePlan } from '../shared/compiler';
@@ -7,9 +8,13 @@ import { CACHED_DEMO_PLAN, MARS_DEMO_BRIEFING } from '../shared/missions/mars-de
 import { sceneSchema } from '../shared/plan';
 import { MARS_SURFACE } from '../shared/scenario';
 import type { SceneVariant } from '../shared/scene';
+import { loadMissionContext } from '../shared/envelope/context';
+import type { SiteId } from '../shared/envelope/types';
 import { grokModelCall } from './grok';
 import { cachedReconstruction, reconstructScene, RECON_DIR } from './imagine';
 import { cachedVoice, readVoiceFile, synthesize, transcribe } from './elevenlabs';
+import { runCampaignBatchParallel } from './campaignPool';
+import { persistCampaign, persistMissionContext, spacetimeConfig, spacetimeConnected } from './spacetime';
 
 // The project's .env wins over stale keys exported in the user's shell.
 dotenv.config({ override: true, quiet: true });
@@ -21,6 +26,12 @@ const XAI_REASONING_EFFORT = process.env.XAI_REASONING_EFFORT ?? 'low';
 const MAX_INTENT_CHARS = 1000;
 const ID_RE = /^[a-f0-9]{8}$/;
 
+const SITE_IDS = new Set<SiteId>(['jezero', 'oxia']);
+const HORIZONS_CSV = readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), '../shared/envelope/data/earth-mars-2026-2028.csv'),
+  'utf8',
+);
+
 const keys = {
   xai: Boolean(process.env.XAI_API_KEY),
   elevenlabs: Boolean(process.env.ELEVENLABS_API_KEY),
@@ -31,7 +42,72 @@ app.use(express.json({ limit: '3mb' }));
 
 // Reports only whether keys are present; never echo key values.
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, keys });
+  res.json({ ok: true, keys, spacetime: { ...spacetimeConfig(), connected: spacetimeConnected() } });
+});
+
+app.post('/api/mission-context', async (req, res) => {
+  const siteId = typeof req.body?.siteId === 'string' ? req.body.siteId : '';
+  const startDate = typeof req.body?.startDate === 'string' ? req.body.startDate : '';
+  const sols = Number(req.body?.sols);
+  if (!SITE_IDS.has(siteId as SiteId)) return res.status(400).json({ error: 'siteId must be jezero or oxia' });
+  if (!startDate) return res.status(400).json({ error: 'startDate is required' });
+  if (!Number.isInteger(sols)) return res.status(400).json({ error: 'sols must be an integer' });
+
+  let context;
+  try {
+    context = loadMissionContext({ siteId: siteId as SiteId, startDate, sols }, HORIZONS_CSV);
+  } catch (err) {
+    return res.status(400).json({ error: (err as Error).message });
+  }
+
+  try {
+    const contextId = await persistMissionContext(context);
+    console.log(`mission-context: wrote ${contextId} (${context.sols.length} sols) to SpacetimeDB`);
+    res.json({ context, persisted: true, contextId });
+  } catch (err) {
+    const persistError = (err as Error).message;
+    console.warn(`mission-context: computed ${siteId} ${startDate} ${sols} but persist failed: ${persistError}`);
+    res.json({ context, persisted: false, persistError });
+  }
+});
+
+app.post('/api/campaign', async (req, res) => {
+  const siteId = typeof req.body?.siteId === 'string' ? req.body.siteId : '';
+  const startDate = typeof req.body?.startDate === 'string' ? req.body.startDate : '';
+  const sols = Number(req.body?.sols);
+  const runs = Number(req.body?.runs ?? 50);
+  const seed = Number(req.body?.seed ?? 2000);
+  const iteration = Number(req.body?.iteration ?? 0);
+  if (!SITE_IDS.has(siteId as SiteId)) return res.status(400).json({ error: 'siteId must be jezero or oxia' });
+  if (!startDate) return res.status(400).json({ error: 'startDate is required' });
+  if (!Number.isInteger(sols)) return res.status(400).json({ error: 'sols must be an integer' });
+  if (!Number.isInteger(runs) || runs < 1 || runs > 200) return res.status(400).json({ error: 'runs must be 1–200' });
+  if (!Number.isInteger(seed) || seed < 0) return res.status(400).json({ error: 'seed must be a non-negative integer' });
+  if (!Number.isInteger(iteration) || iteration < 0) return res.status(400).json({ error: 'iteration must be a non-negative integer' });
+
+  let context;
+  try {
+    context = loadMissionContext({ siteId: siteId as SiteId, startDate, sols }, HORIZONS_CSV);
+  } catch (err) {
+    return res.status(400).json({ error: (err as Error).message });
+  }
+
+  try {
+    const report = await runCampaignBatchParallel(context, { runs, baseSeed: seed, iteration });
+    try {
+      await persistCampaign(report);
+      console.log(
+        `campaign: ${report.contextId} ${runs} runs in ${report.elapsedMs.toFixed(0)} ms (${report.runsPerMin.toFixed(0)} sols/min)`,
+      );
+      res.json({ report, persisted: true });
+    } catch (err) {
+      const persistError = (err as Error).message;
+      console.warn(`campaign: computed ${report.contextId} but persist failed: ${persistError}`);
+      res.json({ report, persisted: false, persistError });
+    }
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });
 
 app.post('/api/compile', async (req, res) => {
