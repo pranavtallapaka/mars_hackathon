@@ -13,3 +13,6 @@ data/raw/
 
 # Probe images from one-off Imagine tests; demo caches under this folder may be committed.
 data/reconstructions/_imagine-probe.jpg
+
+# ElevenLabs TTS clips; regenerated from the scripts in shared/voice.ts
+data/voice/

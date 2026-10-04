@@ -117,6 +117,7 @@ export function MissionPane({
           }
           onRequestImage={onRequestImage}
           imageRequest={ground.imageRequests.find((r) => r.stepId === latest.packet.stepId)}
+          speak={Boolean(onDecide || onRequestImage)}
         />
       )}
       {ground.currentPlan ? (

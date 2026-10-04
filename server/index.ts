@@ -9,6 +9,7 @@ import { MARS_SURFACE } from '../shared/scenario';
 import type { SceneVariant } from '../shared/scene';
 import { grokModelCall } from './grok';
 import { cachedReconstruction, reconstructScene, RECON_DIR } from './imagine';
+import { cachedVoice, readVoiceFile, synthesize, transcribe } from './elevenlabs';
 
 // The project's .env wins over stale keys exported in the user's shell.
 dotenv.config({ override: true, quiet: true });
@@ -26,7 +27,7 @@ const keys = {
 };
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '3mb' }));
 
 // Reports only whether keys are present; never echo key values.
 app.get('/api/health', (_req, res) => {
@@ -76,6 +77,47 @@ app.get('/api/reconstructions/:id', (req, res) => {
   const file = path.join(RECON_DIR, `${id}.jpg`);
   if (!existsSync(file) || !cachedReconstruction(id)) return res.status(404).end();
   res.type('image/jpeg').send(readFileSync(file));
+});
+
+app.post('/api/transcribe', async (req, res) => {
+  const audioB64 = typeof req.body?.audio === 'string' ? req.body.audio : '';
+  const mime = typeof req.body?.mime === 'string' ? req.body.mime : 'audio/webm';
+  if (!audioB64) return res.status(400).json({ error: 'audio is required' });
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(audioB64, 'base64');
+  } catch {
+    return res.status(400).json({ error: 'audio must be base64' });
+  }
+  const result = await transcribe(buf, mime, process.env.ELEVENLABS_API_KEY);
+  console.log(
+    `transcribe: ${result.source}` +
+      (result.ms !== undefined ? ` in ${(result.ms / 1000).toFixed(1)} s` : '') +
+      (result.reason ? ` (${result.reason})` : ''),
+  );
+  res.json(result);
+});
+
+app.post('/api/speak', async (req, res) => {
+  const role = req.body?.role === 'rover' ? 'rover' : req.body?.role === 'ground' ? 'ground' : null;
+  const text = typeof req.body?.text === 'string' ? req.body.text : '';
+  if (!role) return res.status(400).json({ error: 'role must be ground or rover' });
+  if (!text.trim()) return res.status(400).json({ error: 'text is required' });
+  const result = await synthesize(role, text, process.env.ELEVENLABS_API_KEY);
+  console.log(
+    `speak (${role}): ${result.source}` +
+      (result.ms !== undefined ? ` in ${(result.ms / 1000).toFixed(1)} s` : '') +
+      (result.reason ? ` (${result.reason})` : ''),
+  );
+  res.json(result);
+});
+
+app.get('/api/voice/:id', (req, res) => {
+  const id = req.params.id;
+  if (!ID_RE.test(id)) return res.status(400).end();
+  const buf = cachedVoice(id) ? readVoiceFile(id) : null;
+  if (!buf) return res.status(404).end();
+  res.type('audio/mpeg').send(buf);
 });
 
 app.listen(PORT, () => {
