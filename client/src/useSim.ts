@@ -105,6 +105,15 @@ export function useSim() {
     [autoAnswer, ephemerisDate, rebuild],
   );
 
+  const alignWindow = useCallback(
+    (iso: string, nextTerrain: TerrainId) => {
+      setEphemerisDate(iso);
+      setTerrainState(nextTerrain);
+      rebuild(autoAnswer, iso, nextTerrain);
+    },
+    [autoAnswer, rebuild],
+  );
+
   return {
     ...engine,
     started: engine.ours.startedAt !== null,
@@ -115,6 +124,7 @@ export function useSim() {
     setDate,
     terrain,
     setTerrain,
+    alignWindow,
     delayMin: light.delayMin,
     distanceKm: light.distanceKm,
     start,

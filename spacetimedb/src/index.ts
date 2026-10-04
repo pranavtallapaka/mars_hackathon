@@ -129,6 +129,20 @@ const agentLog = table(
   },
 );
 
+const activeEnvelope = table(
+  { name: 'active_envelope', public: true },
+  {
+    id: t.string().primaryKey(),
+    envelopeKey: t.string(),
+    envelopeId: t.string(),
+    version: t.u32(),
+    label: t.string(),
+    json: t.string(),
+    contextId: t.string(),
+    writtenAt: t.string(),
+  },
+);
+
 const envelope = table(
   { name: 'envelope', public: true },
   {
@@ -142,6 +156,46 @@ const envelope = table(
     accepted: t.bool(),
     score: t.f64(),
     unsafe: t.u32(),
+    writtenAt: t.string(),
+  },
+);
+
+const liveScene = table(
+  { name: 'live_scene', public: true },
+  {
+    id: t.string().primaryKey(),
+    imageId: t.string(),
+    sol: t.u32(),
+    camera: t.string(),
+    utcDateTaken: t.string(),
+    localMeanSolarTime: t.string(),
+    daysAgo: t.f64(),
+    filePath: t.string(),
+    nasaUrl: t.string(),
+    credit: t.string(),
+    isFallback: t.bool(),
+    chosenWhy: t.string(),
+    lat: t.option(t.f64()),
+    lon: t.option(t.f64()),
+    waypointSol: t.option(t.u32()),
+    ingestedAt: t.string(),
+  },
+);
+
+const liveScenePlan = table(
+  { name: 'live_scene_plan', public: true },
+  {
+    id: t.string().primaryKey(),
+    imageId: t.string().index('btree'),
+    analysisJson: t.string(),
+    planJson: t.string(),
+    delayMin: t.f64(),
+    rangeAu: t.f64(),
+    earthDate: t.string(),
+    validated: t.bool(),
+    validationReasons: t.string(),
+    compileSource: t.string(),
+    model: t.string(),
     writtenAt: t.string(),
   },
 );
@@ -192,6 +246,9 @@ const spacetimedb = schema({
   agentJob,
   agentLog,
   envelope,
+  activeEnvelope,
+  liveScene,
+  liveScenePlan,
 });
 export default spacetimedb;
 
@@ -447,6 +504,124 @@ export const upsertEnvelope = spacetimedb.reducer(
       ctx.db.envelope.id.update(row);
     } else {
       ctx.db.envelope.insert(row);
+    }
+  },
+);
+
+export const setActiveEnvelope = spacetimedb.reducer(
+  {
+    id: t.string(),
+    envelopeKey: t.string(),
+    envelopeId: t.string(),
+    version: t.u32(),
+    label: t.string(),
+    json: t.string(),
+    contextId: t.string(),
+    writtenAt: t.string(),
+  },
+  (ctx, args) => {
+    const row = {
+      id: args.id,
+      envelopeKey: args.envelopeKey,
+      envelopeId: args.envelopeId,
+      version: args.version,
+      label: args.label,
+      json: args.json,
+      contextId: args.contextId,
+      writtenAt: args.writtenAt,
+    };
+    if (ctx.db.activeEnvelope.id.find(args.id)) {
+      ctx.db.activeEnvelope.id.update(row);
+    } else {
+      ctx.db.activeEnvelope.insert(row);
+    }
+  },
+);
+
+export const clearActiveEnvelope = spacetimedb.reducer({ id: t.string() }, (ctx, { id }) => {
+  if (ctx.db.activeEnvelope.id.find(id)) ctx.db.activeEnvelope.id.delete(id);
+});
+
+export const upsertLiveScene = spacetimedb.reducer(
+  {
+    id: t.string(),
+    imageId: t.string(),
+    sol: t.u32(),
+    camera: t.string(),
+    utcDateTaken: t.string(),
+    localMeanSolarTime: t.string(),
+    daysAgo: t.f64(),
+    filePath: t.string(),
+    nasaUrl: t.string(),
+    credit: t.string(),
+    isFallback: t.bool(),
+    chosenWhy: t.string(),
+    lat: t.option(t.f64()),
+    lon: t.option(t.f64()),
+    waypointSol: t.option(t.u32()),
+    ingestedAt: t.string(),
+  },
+  (ctx, args) => {
+    const row = {
+      id: args.id,
+      imageId: args.imageId,
+      sol: args.sol,
+      camera: args.camera,
+      utcDateTaken: args.utcDateTaken,
+      localMeanSolarTime: args.localMeanSolarTime,
+      daysAgo: args.daysAgo,
+      filePath: args.filePath,
+      nasaUrl: args.nasaUrl,
+      credit: args.credit,
+      isFallback: args.isFallback,
+      chosenWhy: args.chosenWhy,
+      lat: args.lat,
+      lon: args.lon,
+      waypointSol: args.waypointSol,
+      ingestedAt: args.ingestedAt,
+    };
+    if (ctx.db.liveScene.id.find(args.id)) {
+      ctx.db.liveScene.id.update(row);
+    } else {
+      ctx.db.liveScene.insert(row);
+    }
+  },
+);
+
+export const upsertLiveScenePlan = spacetimedb.reducer(
+  {
+    id: t.string(),
+    imageId: t.string(),
+    analysisJson: t.string(),
+    planJson: t.string(),
+    delayMin: t.f64(),
+    rangeAu: t.f64(),
+    earthDate: t.string(),
+    validated: t.bool(),
+    validationReasons: t.string(),
+    compileSource: t.string(),
+    model: t.string(),
+    writtenAt: t.string(),
+  },
+  (ctx, args) => {
+    const row = {
+      id: args.id,
+      imageId: args.imageId,
+      analysisJson: args.analysisJson,
+      planJson: args.planJson,
+      delayMin: args.delayMin,
+      rangeAu: args.rangeAu,
+      earthDate: args.earthDate,
+      validated: args.validated,
+      validationReasons: args.validationReasons,
+      compileSource: args.compileSource,
+      model: args.model,
+      writtenAt: args.writtenAt,
+    };
+    if (ctx.db.liveScenePlan.id.find(args.id)) {
+      ctx.db.liveScenePlan.id.update(row);
+    } else {
+      ctx.db.liveScenePlan.insert(row);
     }
   },
 );

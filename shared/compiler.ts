@@ -53,7 +53,12 @@ export function planJsonSchema(scenario: ScenarioDef, briefing: MissionBriefing)
         type: 'object',
         properties: {
           batteryFloorPct: { type: 'number', minimum: 0, maximum: 100 },
-          noGoZones: { type: 'array', items: { type: 'string', enum: briefing.noGoZones.map((z) => z.id) } },
+          noGoZones: {
+            type: 'array',
+            items: briefing.noGoZones.length
+              ? { type: 'string', enum: briefing.noGoZones.map((z) => z.id) }
+              : { type: 'string' },
+          },
           irreversibleNeedsApproval: { type: 'boolean' },
         },
         required: ['batteryFloorPct', 'noGoZones', 'irreversibleNeedsApproval'],

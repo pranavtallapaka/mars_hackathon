@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CompileResult } from '../../../shared/compiler';
-import { DEMO_INTENT, STAGED_UNSAFE_INTENT, STAGED_UNSAFE_PLAN } from '../../../shared/missions/mars-demo';
+import type { Envelope } from '../../../shared/envelope/schema';
+import { CACHED_DEMO_PLAN, DEMO_INTENT, STAGED_UNSAFE_INTENT, STAGED_UNSAFE_PLAN } from '../../../shared/missions/mars-demo';
 import { createPlanSchema, parseOutcome, type Plan } from '../../../shared/plan';
 import { MARS_SURFACE } from '../../../shared/scenario';
 import { compileIntent } from '../api';
+import { describePolicyOverlay, type PolicyOverlay } from '../sim/activeEnvelope';
 import type { SendResult } from '../sim/sim';
+import type { TerrainId } from '../sim/types';
 import type { SafetyReport } from '../sim/validator';
 import { PlanLimits, PlanSteps } from './PlanPanel';
+import { PolicyCallout } from './PolicyCallout';
 
 type PreviewSource = CompileResult['source'] | 'staged';
 
@@ -39,14 +43,17 @@ interface IntentPanelProps {
   started: boolean;
   checkPlan: (plan: Plan) => SafetyReport;
   onApprove: (plan: Plan) => SendResult;
+  overlayPlan?: (plan: Plan) => Plan;
+  policySource?: { envelope: Envelope; label: string; terrain: TerrainId; date: string } | null;
 }
 
-export function IntentPanel({ started, checkPlan, onApprove }: IntentPanelProps) {
+export function IntentPanel({ started, checkPlan, onApprove, overlayPlan, policySource }: IntentPanelProps) {
   const [intent, setIntent] = useState(DEMO_INTENT);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
+  const autoShown = useRef(false);
 
   const show = (next: Preview | null) => {
     setPreview(next);
@@ -71,14 +78,28 @@ export function IntentPanel({ started, checkPlan, onApprove }: IntentPanelProps)
     show({ plan: createPlanSchema(MARS_SURFACE).parse(STAGED_UNSAFE_PLAN), source: 'staged', attempts: [] });
   };
 
-  const plan = preview?.plan;
+  useEffect(() => {
+    if (!policySource) {
+      autoShown.current = false;
+      return;
+    }
+    if (autoShown.current || started || preview) return;
+    autoShown.current = true;
+    show({ plan: createPlanSchema(MARS_SURFACE).parse(CACHED_DEMO_PLAN), source: 'cached', attempts: [] });
+  }, [policySource, started, preview]);
+
+  const plan = preview ? (overlayPlan ? overlayPlan(preview.plan) : preview.plan) : undefined;
+  const policy: PolicyOverlay | null =
+    preview && policySource
+      ? describePolicyOverlay(preview.plan, policySource.envelope, policySource.terrain, policySource.date, policySource.label)
+      : null;
   const safety = plan ? checkPlan(plan) : null;
   const blocked = sendResult && !sendResult.ok;
 
   return (
     <section className="intent-panel">
       <div className="intent-input">
-        <h3>Mission control · intent</h3>
+        <h3>{policySource ? 'Mission control · using envelope policy' : 'Mission control · intent'}</h3>
         <textarea
           value={intent}
           rows={3}
@@ -113,7 +134,9 @@ export function IntentPanel({ started, checkPlan, onApprove }: IntentPanelProps)
             <span className={`chip ${preview.source === 'staged' ? 'bad' : preview.source === 'cached' ? '' : 'source-grok'}`}>
               {SOURCE_LABEL[preview.source]}
             </span>
+            {policySource && <span className="chip source-grok">Limits from envelope</span>}
           </div>
+          {policy && <PolicyCallout policy={policy} />}
           {(preview.fallbackReason || preview.attempts.some((a) => !a.ok)) && (
             <ul className="attempts muted small">
               {preview.attempts.map((a, i) => (
@@ -133,7 +156,7 @@ export function IntentPanel({ started, checkPlan, onApprove }: IntentPanelProps)
               </span>
             ))}
           </div>
-          <PlanLimits plan={plan} />
+          <PlanLimits plan={plan} compiled={preview.plan} />
 
           <div className={safety.ok ? 'safety ok' : 'safety fail'}>
             <strong>{safety.ok ? 'Safety validator: passes' : 'Safety validator: will block this plan'}</strong>
@@ -163,7 +186,9 @@ export function IntentPanel({ started, checkPlan, onApprove }: IntentPanelProps)
             <span className={blocked ? 'bad small' : 'muted small'}>
               {blocked
                 ? 'Nothing was sent. Counted under "Unsafe blocked". Fix the intent and compile again.'
-                : 'Ours gets this plan. The baseline gets the same steps with every branch stripped.'}
+                : policySource
+                  ? 'Ours gets this plan with the envelope limits. Baseline gets the same steps and limits with every branch stripped.'
+                  : 'Ours gets this plan. The baseline gets the same steps with every branch stripped.'}
             </span>
           </div>
         </div>

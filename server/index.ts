@@ -21,7 +21,16 @@ import {
 import { cachedReconstruction, reconstructScene, RECON_DIR } from './imagine';
 import { cachedVoice, readVoiceFile, synthesize, transcribe } from './elevenlabs';
 import { runCampaignBatchParallel } from './campaignPool';
-import { persistAgentEvent, persistCampaign, persistMissionContext, spacetimeConfig, spacetimeConnected } from './spacetime';
+import { loadLiveSnapshot, resolveLiveImage } from './liveReveal';
+import {
+  clearPersistedActiveEnvelope,
+  persistActiveEnvelope,
+  persistAgentEvent,
+  persistCampaign,
+  persistMissionContext,
+  spacetimeConfig,
+  spacetimeConnected,
+} from './spacetime';
 
 // The project's .env wins over stale keys exported in the user's shell.
 dotenv.config({ override: true, quiet: true });
@@ -52,6 +61,28 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, keys, spacetime: { ...spacetimeConfig(), connected: spacetimeConnected() } });
 });
 
+app.get('/api/live-scene', (req, res) => {
+  const cached = req.query.cached === '1' || req.query.cached === 'true';
+  try {
+    const snapshot = loadLiveSnapshot({ cached });
+    res.json(snapshot.view);
+  } catch (err) {
+    res.status(cached ? 404 : 500).json({ error: (err as Error).message });
+  }
+});
+
+app.get('/api/live-scene/image', (req, res) => {
+  const cached = req.query.cached === '1' || req.query.cached === 'true';
+  const imageId = typeof req.query.imageId === 'string' ? req.query.imageId : undefined;
+  try {
+    const image = resolveLiveImage({ cached, imageId });
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.type(image.mime).sendFile(image.filePath);
+  } catch (err) {
+    res.status(404).json({ error: (err as Error).message });
+  }
+});
+
 app.post('/api/mission-context', async (req, res) => {
   const siteId = typeof req.body?.siteId === 'string' ? req.body.siteId : '';
   const startDate = typeof req.body?.startDate === 'string' ? req.body.startDate : '';
@@ -75,6 +106,34 @@ app.post('/api/mission-context', async (req, res) => {
     const persistError = (err as Error).message;
     console.warn(`mission-context: computed ${siteId} ${startDate} ${sols} but persist failed: ${persistError}`);
     res.json({ context, persisted: false, persistError });
+  }
+});
+
+app.post('/api/active-envelope', async (req, res) => {
+  const envelopeKey = typeof req.body?.envelopeKey === 'string' ? req.body.envelopeKey : '';
+  const envelopeId = typeof req.body?.envelopeId === 'string' ? req.body.envelopeId : '';
+  const version = Number(req.body?.version);
+  const label = typeof req.body?.label === 'string' ? req.body.label : '';
+  const json = typeof req.body?.json === 'string' ? req.body.json : '';
+  const contextId = typeof req.body?.contextId === 'string' ? req.body.contextId : '';
+  if (!envelopeKey || !envelopeId || !label || !json || !contextId) {
+    return res.status(400).json({ error: 'envelopeKey, envelopeId, label, json and contextId are required' });
+  }
+  if (!Number.isInteger(version) || version < 1) return res.status(400).json({ error: 'version must be a positive integer' });
+  try {
+    await persistActiveEnvelope({ envelopeKey, envelopeId, version, label, json, contextId });
+    res.json({ persisted: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+app.delete('/api/active-envelope', async (_req, res) => {
+  try {
+    await clearPersistedActiveEnvelope();
+    res.json({ persisted: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 

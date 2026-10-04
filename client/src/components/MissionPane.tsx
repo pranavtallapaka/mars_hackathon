@@ -56,13 +56,20 @@ export function MissionPane({
   sim,
   onDecide,
   onRequestImage,
+  policyActive = false,
 }: {
   sim: Sim;
   onDecide?: (optionId: string) => void;
   onRequestImage?: (stepId: string) => void;
+  policyActive?: boolean;
 }) {
   const { ground, rover, now } = sim;
   const copy = COPY[sim.mode];
+  const tagline = policyActive
+    ? sim.mode === 'contingency'
+      ? 'This plan uses the envelope policy from Envelope. Branches handle expected surprises; escalate only when the policy says to.'
+      : 'Same steps, no branches. Limits still come from the loaded envelope so both sides fly the same policy.'
+    : copy.tagline;
   const known = ground.lastState;
   const staleMin = Math.floor(now - known.simTime);
   const staleText = `as of ${staleMin} min ago`;
@@ -74,7 +81,7 @@ export function MissionPane({
       <div className="pane-head">
         <h2>{copy.title}</h2>
       </div>
-      <p className="muted small tagline">{copy.tagline}</p>
+      <p className="muted small tagline">{tagline}</p>
       <Counters sim={sim} />
 
       <MapGrid
@@ -120,7 +127,7 @@ export function MissionPane({
         />
       )}
       {ground.currentPlan ? (
-        <PlanPanel sim={sim} plan={ground.currentPlan} knownStepId={known.stepId} />
+        <PlanPanel sim={sim} plan={ground.currentPlan} knownStepId={known.stepId} fromEnvelope={policyActive} />
       ) : (
         <p className="muted">No plan uplinked yet. Compile an intent and approve the preview.</p>
       )}

@@ -11,8 +11,15 @@ const RELIEF_SCALE = 1.45;
 
 export const PLOT_BLUE = 0x2554c7;
 export const HAZARD_AMBER = 0xd9831a;
-export const MARS_SKY = '#f3ead6';
-export const MARS_FOG = '#e8d4b4';
+export const MARS_SKY = '#c4a06a';
+export const MARS_FOG = '#d8b892';
+
+export const MARS_ASSETS = {
+  sky: '/assets/mars/sky.png',
+  regolith: '/assets/mars/regolith.png',
+  rocks: '/assets/mars/rocks.png',
+  dust: '/assets/mars/dust.png',
+} as const;
 
 export function cellMetersOf(map: SimMap): number {
   return map.cellMeters ?? 2;
@@ -116,6 +123,10 @@ export function buildTerrainGeometry(map: SimMap): THREE.BufferGeometry {
   geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   geo.setIndex(indices);
   geo.computeVertexNormals();
+  const normals = geo.getAttribute('normal');
+  const slope = new Float32Array(cols * rows);
+  for (let i = 0; i < cols * rows; i++) slope[i] = 1 - (normals.getY(i) ?? 1);
+  geo.setAttribute('slope', new THREE.BufferAttribute(slope, 1));
   return geo;
 }
 

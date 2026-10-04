@@ -1,5 +1,6 @@
 import type { CompileResult } from '../../shared/compiler';
 import type { MissionConcept, MissionContext } from '../../shared/envelope/types';
+import type { LiveRevealView } from '../../shared/liveScene/reveal';
 import type { Scene } from '../../shared/plan';
 import type { ReconstructionResult, SceneVariant } from '../../shared/scene';
 import type { SpeakResult, TranscribeResult, VoiceRole } from '../../shared/voice';
@@ -131,6 +132,30 @@ export async function postAgent(concept: {
   return json as AgentResult;
 }
 
+export async function postActiveEnvelope(body: {
+  envelopeKey: string;
+  envelopeId: string;
+  version: number;
+  label: string;
+  json: string;
+  contextId: string;
+}): Promise<{ persisted: boolean }> {
+  const res = await fetch('/api/active-envelope', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error ?? `active envelope failed (HTTP ${res.status})`);
+  return json as { persisted: boolean };
+}
+
+export async function deleteActiveEnvelope(): Promise<void> {
+  const res = await fetch('/api/active-envelope', { method: 'DELETE' });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error ?? `clear envelope failed (HTTP ${res.status})`);
+}
+
 export async function postCampaign(body: CampaignRequest): Promise<CampaignResult> {
   const res = await fetch('/api/campaign', {
     method: 'POST',
@@ -140,6 +165,13 @@ export async function postCampaign(body: CampaignRequest): Promise<CampaignResul
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? `campaign failed (HTTP ${res.status})`);
   return json as CampaignResult;
+}
+
+export async function fetchLiveScene(cached = false): Promise<LiveRevealView> {
+  const res = await fetch(`/api/live-scene${cached ? '?cached=1' : ''}`);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `live scene failed (HTTP ${res.status})`);
+  return body as LiveRevealView;
 }
 
 export async function compileIntent(intent: string, useCached = false): Promise<CompileResult> {

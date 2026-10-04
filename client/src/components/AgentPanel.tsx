@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTable } from 'spacetimedb/react';
 import { postAgent } from '../api';
 import { tables } from '../module_bindings';
@@ -29,6 +29,11 @@ export function AgentPanel({ concept, contextId }: AgentPanelProps) {
     () => (job?.bestEnvelopeKey ? [...envelopes].find((e) => e.id === job.bestEnvelopeKey) : undefined),
     [envelopes, job],
   );
+  const logWrap = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = logWrap.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [rows.length]);
 
   const run = async () => {
     setBusy(true);
@@ -78,7 +83,7 @@ export function AgentPanel({ concept, contextId }: AgentPanelProps) {
             </p>
           )}
           {rows.length > 0 && (
-            <div className="sol-table-wrap">
+            <div className="sol-table-wrap" ref={logWrap}>
               <table className="sol-table">
                 <thead>
                   <tr>

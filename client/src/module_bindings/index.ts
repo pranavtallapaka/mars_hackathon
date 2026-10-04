@@ -34,24 +34,31 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ClearActiveEnvelopeReducer from "./clear_active_envelope_reducer";
 import ReplaceAgentLogsReducer from "./replace_agent_logs_reducer";
 import ReplaceFailuresReducer from "./replace_failures_reducer";
 import ReplaceSolConditionsReducer from "./replace_sol_conditions_reducer";
+import SetActiveEnvelopeReducer from "./set_active_envelope_reducer";
 import UpsertAgentJobReducer from "./upsert_agent_job_reducer";
 import UpsertCampaignResultReducer from "./upsert_campaign_result_reducer";
 import UpsertDataSourceReducer from "./upsert_data_source_reducer";
 import UpsertEnvelopeReducer from "./upsert_envelope_reducer";
+import UpsertLiveSceneReducer from "./upsert_live_scene_reducer";
+import UpsertLiveScenePlanReducer from "./upsert_live_scene_plan_reducer";
 import UpsertMissionContextReducer from "./upsert_mission_context_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import ActiveEnvelopeRow from "./active_envelope_table";
 import AgentJobRow from "./agent_job_table";
 import AgentLogRow from "./agent_log_table";
 import CampaignResultRow from "./campaign_result_table";
 import DataSourceRow from "./data_source_table";
 import EnvelopeRow from "./envelope_table";
 import FailureRow from "./failure_table";
+import LiveSceneRow from "./live_scene_table";
+import LiveScenePlanRow from "./live_scene_plan_table";
 import MissionContextRow from "./mission_context_table";
 import SolConditionsRow from "./sol_conditions_table";
 
@@ -59,6 +66,17 @@ import SolConditionsRow from "./sol_conditions_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  activeEnvelope: __table({
+    name: 'active_envelope',
+    indexes: [
+      { accessor: 'id', name: 'active_envelope_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'active_envelope_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ActiveEnvelopeRow),
   agentJob: __table({
     name: 'agent_job',
     indexes: [
@@ -140,6 +158,31 @@ const tablesSchema = __schema({
       { name: 'failure_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, FailureRow),
+  liveScene: __table({
+    name: 'live_scene',
+    indexes: [
+      { accessor: 'id', name: 'live_scene_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'live_scene_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, LiveSceneRow),
+  liveScenePlan: __table({
+    name: 'live_scene_plan',
+    indexes: [
+      { accessor: 'id', name: 'live_scene_plan_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'imageId', name: 'live_scene_plan_image_id_idx_btree', algorithm: 'btree', columns: [
+        'imageId',
+      ] },
+    ],
+    constraints: [
+      { name: 'live_scene_plan_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, LiveScenePlanRow),
   missionContext: __table({
     name: 'mission_context',
     indexes: [
@@ -169,13 +212,17 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("clear_active_envelope", ClearActiveEnvelopeReducer),
   __reducerSchema("replace_agent_logs", ReplaceAgentLogsReducer),
   __reducerSchema("replace_failures", ReplaceFailuresReducer),
   __reducerSchema("replace_sol_conditions", ReplaceSolConditionsReducer),
+  __reducerSchema("set_active_envelope", SetActiveEnvelopeReducer),
   __reducerSchema("upsert_agent_job", UpsertAgentJobReducer),
   __reducerSchema("upsert_campaign_result", UpsertCampaignResultReducer),
   __reducerSchema("upsert_data_source", UpsertDataSourceReducer),
   __reducerSchema("upsert_envelope", UpsertEnvelopeReducer),
+  __reducerSchema("upsert_live_scene", UpsertLiveSceneReducer),
+  __reducerSchema("upsert_live_scene_plan", UpsertLiveScenePlanReducer),
   __reducerSchema("upsert_mission_context", UpsertMissionContextReducer),
 );
 

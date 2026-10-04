@@ -1,4 +1,4 @@
-import { DEFAULT_CONCEPT, missionContextId } from './concept';
+import { DEFAULT_CONCEPT, missionContextId, parseContextId } from './concept';
 import { earthDateForSol, mars24, MARS24_PROVENANCE } from './mars24';
 import { commState, HORIZONS_PROVENANCE, lookupHorizons, parseHorizonsCsv } from './horizons';
 import { emptyBenchmark, perseveranceBenchmark } from './perseverance';
@@ -76,4 +76,4 @@ export function siteIds(): SiteId[] {
   return Object.keys(SITES) as SiteId[];
 }
 
-export { DEFAULT_CONCEPT, earthDateForSol, missionContextId, SITES };
+export { DEFAULT_CONCEPT, earthDateForSol, missionContextId, parseContextId, SITES };

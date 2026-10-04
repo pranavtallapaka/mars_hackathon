@@ -1,0 +1,217 @@
+{
+  "imageId": "FLF_1998_0844308610_411ECM_N0910970FHAZ00206_01_295J",
+  "analysis": {
+    "hazards": [
+      {
+        "type": "rock",
+        "bbox": {
+          "x": 0.18,
+          "y": 0.5,
+          "w": 0.2,
+          "h": 0.16
+        },
+        "severity": "medium",
+        "reason": "Scattered cobbles and larger blocks on the left mid-ground that could snag a wheel."
+      },
+      {
+        "type": "rock",
+        "bbox": {
+          "x": 0.66,
+          "y": 0.5,
+          "w": 0.28,
+          "h": 0.2
+        },
+        "severity": "medium",
+        "reason": "Dense rock field on the right with multiple wheel-scale stones."
+      },
+      {
+        "type": "sand_soft_soil",
+        "bbox": {
+          "x": 0.38,
+          "y": 0.45,
+          "w": 0.26,
+          "h": 0.14
+        },
+        "severity": "medium",
+        "reason": "Disturbed, loose regolith directly under the turret where soil looks freshly worked."
+      },
+      {
+        "type": "rock",
+        "bbox": {
+          "x": 0.3,
+          "y": 0.68,
+          "w": 0.16,
+          "h": 0.09
+        },
+        "severity": "low",
+        "reason": "Isolated foreground stones just ahead of the rover centerline."
+      }
+    ],
+    "targets": [
+      {
+        "type": "interesting_rock",
+        "bbox": {
+          "x": 0.22,
+          "y": 0.51,
+          "w": 0.09,
+          "h": 0.07
+        },
+        "reason": "Pale angular block standing out from surrounding fines, reachable from the left."
+      },
+      {
+        "type": "interesting_rock",
+        "bbox": {
+          "x": 0.7,
+          "y": 0.55,
+          "w": 0.1,
+          "h": 0.08
+        },
+        "reason": "Larger light-toned rock in the right rock field, good close-approach science target."
+      }
+    ],
+    "terrainSummary": "Flat sandy regolith with scattered cobbles, a disturbed soft patch under the arm, and no near-field drop-offs or steep slopes.",
+    "confidence": "medium",
+    "route": [
+      {
+        "x": 0.5,
+        "y": 0.85
+      },
+      {
+        "x": 0.56,
+        "y": 0.76
+      },
+      {
+        "x": 0.62,
+        "y": 0.68
+      },
+      {
+        "x": 0.66,
+        "y": 0.62
+      },
+      {
+        "x": 0.7,
+        "y": 0.58
+      },
+      {
+        "x": 0.73,
+        "y": 0.55
+      }
+    ],
+    "altRoute": [
+      {
+        "x": 0.5,
+        "y": 0.85
+      },
+      {
+        "x": 0.42,
+        "y": 0.76
+      },
+      {
+        "x": 0.34,
+        "y": 0.68
+      },
+      {
+        "x": 0.28,
+        "y": 0.62
+      },
+      {
+        "x": 0.25,
+        "y": 0.56
+      },
+      {
+        "x": 0.24,
+        "y": 0.52
+      }
+    ]
+  },
+  "plan": {
+    "planId": "live-FLF_1998_084",
+    "version": 1,
+    "intent": "Drive to target-2 in this Navcam scene and image it. Avoid sand soft soil. Keep battery above 30%. Do not drill.",
+    "limits": {
+      "batteryFloorPct": 30,
+      "noGoZones": [
+        "sand-1"
+      ],
+      "irreversibleNeedsApproval": true
+    },
+    "steps": [
+      {
+        "id": "s1",
+        "action": "drive_to",
+        "args": {
+          "target": "target-2"
+        },
+        "branches": [
+          {
+            "if": "path_blocked",
+            "then": "escalate"
+          },
+          {
+            "if": "hazard_detected",
+            "then": "abort"
+          },
+          {
+            "if": "battery_below_floor",
+            "then": "abort"
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "action": "image",
+        "args": {
+          "target": "target-2"
+        },
+        "branches": [
+          {
+            "if": "target_not_found",
+            "then": "escalate"
+          },
+          {
+            "if": "confidence_below",
+            "then": "goto:s2b"
+          }
+        ]
+      },
+      {
+        "id": "s2b",
+        "action": "image",
+        "args": {
+          "target": "target-2"
+        },
+        "branches": [
+          {
+            "if": "target_not_found",
+            "then": "escalate"
+          },
+          {
+            "if": "confidence_below",
+            "then": "escalate"
+          }
+        ]
+      }
+    ],
+    "escalateWhen": [
+      "no_branch_matches",
+      "confidence_below:0.6"
+    ],
+    "abort": {
+      "behavior": "stop_and_return",
+      "to": "last_safe_waypoint"
+    },
+    "whileWaiting": [
+      "image_surroundings"
+    ]
+  },
+  "delay": {
+    "earthDate": "2026-10-04",
+    "delayMin": 13.6502,
+    "rangeAu": 1.64129441,
+    "sotDeg": 67.5701
+  },
+  "compileSource": "grok",
+  "validated": true,
+  "validationReasons": [],
+  "model": "grok-4.7"
+}

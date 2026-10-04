@@ -10,6 +10,18 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const ActiveEnvelope = __t.object("ActiveEnvelope", {
+  id: __t.string(),
+  envelopeKey: __t.string(),
+  envelopeId: __t.string(),
+  version: __t.u32(),
+  label: __t.string(),
+  json: __t.string(),
+  contextId: __t.string(),
+  writtenAt: __t.string(),
+});
+export type ActiveEnvelope = __Infer<typeof ActiveEnvelope>;
+
 export const AgentJob = __t.object("AgentJob", {
   id: __t.string(),
   contextId: __t.string(),
@@ -124,6 +136,42 @@ export const FailureInput = __t.object("FailureInput", {
   side: __t.string(),
 });
 export type FailureInput = __Infer<typeof FailureInput>;
+
+export const LiveScene = __t.object("LiveScene", {
+  id: __t.string(),
+  imageId: __t.string(),
+  sol: __t.u32(),
+  camera: __t.string(),
+  utcDateTaken: __t.string(),
+  localMeanSolarTime: __t.string(),
+  daysAgo: __t.f64(),
+  filePath: __t.string(),
+  nasaUrl: __t.string(),
+  credit: __t.string(),
+  isFallback: __t.bool(),
+  chosenWhy: __t.string(),
+  lat: __t.option(__t.f64()),
+  lon: __t.option(__t.f64()),
+  waypointSol: __t.option(__t.u32()),
+  ingestedAt: __t.string(),
+});
+export type LiveScene = __Infer<typeof LiveScene>;
+
+export const LiveScenePlan = __t.object("LiveScenePlan", {
+  id: __t.string(),
+  imageId: __t.string(),
+  analysisJson: __t.string(),
+  planJson: __t.string(),
+  delayMin: __t.f64(),
+  rangeAu: __t.f64(),
+  earthDate: __t.string(),
+  validated: __t.bool(),
+  validationReasons: __t.string(),
+  compileSource: __t.string(),
+  model: __t.string(),
+  writtenAt: __t.string(),
+});
+export type LiveScenePlan = __Infer<typeof LiveScenePlan>;
 
 export const MissionContext = __t.object("MissionContext", {
   id: __t.string(),

@@ -5,6 +5,7 @@ import reliefUrl from '../../../shared/mars/jezero-relief.png';
 import type { SimMap, Vec } from '../sim/types';
 import {
   HAZARD_AMBER,
+  MARS_ASSETS,
   MARS_FOG,
   MARS_SKY,
   PLOT_BLUE,
@@ -15,6 +16,7 @@ import {
   nearPebbles,
   sandCells,
   worldFromGrid,
+  worldSize,
 } from './terrain';
 
 export interface RoverPose {
@@ -45,29 +47,53 @@ function lookAlongPath(map: SimMap, pose: RoverPose, _path: readonly Vec[]): THR
   return new THREE.Vector3(w.x, w.y + 0.08, w.z);
 }
 
-function makeDustTexture(): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = c.height = 512;
-  const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#c9a16c';
-  ctx.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 9000; i++) {
-    const n = Math.random();
-    ctx.fillStyle = `rgba(${150 + n * 70},${100 + n * 50},${55 + n * 30},${0.28 + n * 0.25})`;
-    ctx.fillRect(Math.random() * 512, Math.random() * 512, 1 + n * 2.2, 1 + n * 2.2);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(36, 24);
-  tex.colorSpace = THREE.SRGBColorSpace;
+function useMarsTexture(url: string, tile = false): THREE.Texture | null {
+  const [tex, setTex] = useState<THREE.Texture | null>(null);
+  useLayoutEffect(() => {
+    const loader = new THREE.TextureLoader();
+    let alive = true;
+    loader.load(url, (next) => {
+      if (!alive) return;
+      next.colorSpace = THREE.SRGBColorSpace;
+      if (tile) {
+        next.wrapS = next.wrapT = THREE.RepeatWrapping;
+        next.anisotropy = 8;
+      }
+      setTex(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [url, tile]);
   return tex;
 }
 
-function Terrain({ map }: { map: SimMap }) {
+function Sky({ tex }: { tex: THREE.Texture | null }) {
+  if (!tex) return <color attach="background" args={[MARS_SKY]} />;
+  return (
+    <>
+      <color attach="background" args={[MARS_SKY]} />
+      <mesh>
+        <sphereGeometry args={[480, 48, 32]} />
+        <meshBasicMaterial map={tex} side={THREE.BackSide} fog={false} />
+      </mesh>
+    </>
+  );
+}
+
+function Terrain({ map, regolith }: { map: SimMap; regolith: THREE.Texture | null }) {
   const geo = useMemo(() => buildTerrainGeometry(map), [map]);
-  const dust = useMemo(() => makeDustTexture(), []);
   const [relief, setRelief] = useState<THREE.Texture | null>(null);
   const jezero = map.source?.id === 'DTEEC_048842_1985_048908_1985_U01';
+  const ground = useMemo(() => {
+    if (!regolith) return null;
+    const { w, d } = worldSize(map);
+    const tiled = regolith.clone();
+    tiled.wrapS = tiled.wrapT = THREE.RepeatWrapping;
+    tiled.repeat.set(w / 3.4, d / 3.4);
+    tiled.needsUpdate = true;
+    return tiled;
+  }, [regolith, map]);
   useLayoutEffect(() => {
     if (!jezero) return;
     const loader = new THREE.TextureLoader();
@@ -80,8 +106,8 @@ function Terrain({ map }: { map: SimMap }) {
   return (
     <mesh geometry={geo} receiveShadow>
       <meshStandardMaterial
-        vertexColors
-        map={dust}
+        map={ground ?? undefined}
+        color={ground ? '#ffffff' : '#b07a4a'}
         bumpMap={relief ?? undefined}
         bumpScale={2.4}
         roughness={0.97}
@@ -110,7 +136,7 @@ function Sand({ map }: { map: SimMap }) {
   );
 }
 
-function Pebbles({ map, pose }: { map: SimMap; pose: RoverPose }) {
+function Pebbles({ map, pose, rocks }: { map: SimMap; pose: RoverPose; rocks: THREE.Texture | null }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const cellX = Math.floor(pose.x);
   const cellY = Math.floor(pose.y);
@@ -131,12 +157,12 @@ function Pebbles({ map, pose }: { map: SimMap; pose: RoverPose }) {
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, layout.length]} castShadow receiveShadow>
       <dodecahedronGeometry args={[1, 0]} />
-      <meshStandardMaterial color="#8d6b48" roughness={0.96} flatShading />
+      <meshStandardMaterial map={rocks ?? undefined} color={rocks ? '#d8c4a8' : '#8d6b48'} roughness={0.96} flatShading />
     </instancedMesh>
   );
 }
 
-function Rocks({ map, extras }: { map: SimMap; extras: readonly Vec[] }) {
+function Rocks({ map, extras, rocks }: { map: SimMap; extras: readonly Vec[]; rocks: THREE.Texture | null }) {
   const cells = useMemo(() => {
     const seen = new Set<string>();
     const all: Vec[] = [];
@@ -156,10 +182,32 @@ function Rocks({ map, extras }: { map: SimMap; extras: readonly Vec[] }) {
         return (
           <mesh key={`${c.x},${c.y}`} position={[w.x, w.y + s * 0.38, w.z]} rotation={[c.x * 0.3, c.y * 0.5, 0.15]} castShadow>
             <icosahedronGeometry args={[s, 1]} />
-            <meshStandardMaterial color="#6a5340" roughness={0.92} flatShading />
+            <meshStandardMaterial map={rocks ?? undefined} color={rocks ? '#c4b09a' : '#6a5340'} roughness={0.92} flatShading />
           </mesh>
         );
       })}
+    </group>
+  );
+}
+
+function DustVeil({ map, dust }: { map: SimMap; dust: THREE.Texture | null }) {
+  if (!dust) return null;
+  const { w, d } = worldSize(map);
+  const cx = w / 2;
+  const cz = d / 2;
+  const planes = [
+    { pos: [cx, 7, cz - d * 0.22] as const, rot: [0, 0, 0] as const },
+    { pos: [cx + w * 0.2, 8, cz] as const, rot: [0, Math.PI / 2, 0] as const },
+    { pos: [cx - w * 0.18, 6.5, cz + d * 0.08] as const, rot: [0, -Math.PI / 2.4, 0] as const },
+  ];
+  return (
+    <group>
+      {planes.map((p, i) => (
+        <mesh key={i} position={[...p.pos]} rotation={[...p.rot]}>
+          <planeGeometry args={[Math.max(70, w * 0.55), 32]} />
+          <meshBasicMaterial map={dust} transparent opacity={0.26} depthWrite={false} fog />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -191,10 +239,14 @@ function MastCam({ map, pose, path }: { map: SimMap; pose: RoverPose; path: read
 }
 
 function Scene({ map, pose, path, boulders }: RoverViewProps) {
+  const sky = useMarsTexture(MARS_ASSETS.sky);
+  const regolith = useMarsTexture(MARS_ASSETS.regolith, true);
+  const rocks = useMarsTexture(MARS_ASSETS.rocks, true);
+  const dust = useMarsTexture(MARS_ASSETS.dust, true);
   return (
     <>
-      <color attach="background" args={[MARS_SKY]} />
-      <fog attach="fog" args={[MARS_FOG, 28, 220]} />
+      <Sky tex={sky} />
+      <fog attach="fog" args={[MARS_FOG, 36, 200]} />
       <hemisphereLight args={['#fff1dc', '#7a5a3a', 0.85]} />
       <ambientLight intensity={0.22} />
       <directionalLight
@@ -205,10 +257,11 @@ function Scene({ map, pose, path, boulders }: RoverViewProps) {
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
-      <Terrain map={map} />
+      <Terrain map={map} regolith={regolith} />
       <Sand map={map} />
-      <Pebbles map={map} pose={pose} />
-      <Rocks map={map} extras={boulders} />
+      <Pebbles map={map} pose={pose} rocks={rocks} />
+      <Rocks map={map} extras={boulders} rocks={rocks} />
+      <DustVeil map={map} dust={dust} />
       <Route map={map} path={path} from={pose} />
       <MastCam map={map} pose={pose} path={path} />
     </>

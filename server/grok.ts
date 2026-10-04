@@ -5,6 +5,7 @@ import { validateEnvelope, type Envelope } from '../shared/envelope/schema';
 
 const XAI_URL = 'https://api.x.ai/v1/responses';
 const TIMEOUT_MS = 60_000;
+const VISION_TIMEOUT_MS = 120_000;
 
 interface ResponsesOutput {
   output?: { type: string; content?: { type: string; text?: string }[] }[];
@@ -84,6 +85,51 @@ export function grokModelCall(apiKey: string, model: string, effort: string, sch
     if (!text) throw new Error('no output text in response');
     return text;
   };
+}
+
+export async function grokVisionJson(opts: {
+  apiKey: string;
+  model: string;
+  effort: string;
+  prompt: string;
+  imageBase64: string;
+  mime: string;
+  schema: object;
+  schemaName: string;
+}): Promise<string> {
+  const res = await fetch(XAI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${opts.apiKey}` },
+    signal: AbortSignal.timeout(VISION_TIMEOUT_MS),
+    body: JSON.stringify({
+      model: opts.model,
+      input: [
+        {
+          role: 'system',
+          content: 'Return structured JSON only. No prose, no markdown.',
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'input_image', image_url: `data:${opts.mime};base64,${opts.imageBase64}`, detail: 'high' },
+            { type: 'input_text', text: opts.prompt },
+          ],
+        },
+      ],
+      reasoning: { effort: opts.effort },
+      store: false,
+      text: { format: { type: 'json_schema', name: opts.schemaName, schema: opts.schema, strict: true } },
+    }),
+  });
+  const body = (await res.json().catch(() => ({}))) as ResponsesOutput & { code?: string };
+  if (!res.ok) {
+    const detail = typeof body.error === 'string' ? body.error : body.error?.message;
+    throw new Error(`HTTP ${res.status}${detail ? `: ${detail}` : ''}`);
+  }
+  const message = body.output?.find((o) => o.type === 'message');
+  const text = message?.content?.find((c) => c.type === 'output_text')?.text;
+  if (!text) throw new Error('no output text in response');
+  return text;
 }
 
 function proposePrompt(input: ProposeInput): string {

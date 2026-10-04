@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-10-04T06:50:57.187Z",
+  "model": "grok-imagine-image",
+  "estimatedCostUsd": 0.18,
+  "chosen": {
+    "plates": "plates/candidate-01.png",
+    "horizon": "horizon/candidate-02.png",
+    "boulder": "boulder/candidate-02.png"
+  },
+  "assets": [
+    {
+      "file": "plates/candidate-01.png",
+      "category": "plates",
+      "prompt": "Seamless tileable top-down photograph of Jezero crater surface like a Perseverance Navcam still: rust-orange flat sandstone slabs and pavement, thin dust in the cracks, small grey pebbles, even hazy butterscotch daylight, no shadows, no horizon, no hills, no rover, no spacecraft, no people, no text, no watermark, photoreal repeating texture.",
+      "generatedAt": "2026-10-04T06:50:45.084Z"
+    },
+    {
+      "file": "plates/candidate-02.png",
+      "category": "plates",
+      "prompt": "Seamless tileable top-down photograph of Jezero crater surface like a Perseverance Navcam still: rust-orange flat sandstone slabs and pavement, thin dust in the cracks, small grey pebbles, even hazy butterscotch daylight, no shadows, no horizon, no hills, no rover, no spacecraft, no people, no text, no watermark, photoreal repeating texture.",
+      "generatedAt": "2026-10-04T06:50:45.084Z"
+    },
+    {
+      "file": "plates/candidate-03.png",
+      "category": "plates",
+      "prompt": "Seamless tileable top-down photograph of Jezero crater surface like a Perseverance Navcam still: rust-orange flat sandstone slabs and pavement, thin dust in the cracks, small grey pebbles, even hazy butterscotch daylight, no shadows, no horizon, no hills, no rover, no spacecraft, no people, no text, no watermark, photoreal repeating texture.",
+      "generatedAt": "2026-10-04T06:50:45.084Z"
+    },
+    {
+      "file": "plates/candidate-04.png",
+      "category": "plates",
+      "prompt": "Seamless tileable top-down photograph of Jezero crater surface like a Perseverance Navcam still: rust-orange flat sandstone slabs and pavement, thin dust in the cracks, small grey pebbles, even hazy butterscotch daylight, no shadows, no horizon, no hills, no rover, no spacecraft, no people, no text, no watermark, photoreal repeating texture.",
+      "generatedAt": "2026-10-04T06:50:45.084Z"
+    },
+    {
+      "file": "horizon/candidate-01.png",
+      "category": "horizon",
+      "prompt": "Photoreal Mars landscape photograph like a Perseverance Navcam frame: pale butterscotch sky, empty rust-orange desert of flat sandstone slabs and a few dark boulders, low distant ridges on the horizon, soft hazy daylight, no rover, no spacecraft, no people, no text, no watermark.",
+      "generatedAt": "2026-10-04T06:50:51.466Z"
+    },
+    {
+      "file": "horizon/candidate-02.png",
+      "category": "horizon",
+      "prompt": "Photoreal Mars landscape photograph like a Perseverance Navcam frame: pale butterscotch sky, empty rust-orange desert of flat sandstone slabs and a few dark boulders, low distant ridges on the horizon, soft hazy daylight, no rover, no spacecraft, no people, no text, no watermark.",
+      "generatedAt": "2026-10-04T06:50:51.466Z"
+    },
+    {
+      "file": "horizon/candidate-03.png",
+      "category": "horizon",
+      "prompt": "Photoreal Mars landscape photograph like a Perseverance Navcam frame: pale butterscotch sky, empty rust-orange desert of flat sandstone slabs and a few dark boulders, low distant ridges on the horizon, soft hazy daylight, no rover, no spacecraft, no people, no text, no watermark.",
+      "generatedAt": "2026-10-04T06:50:51.466Z"
+    },
+    {
+      "file": "boulder/candidate-01.png",
+      "category": "boulder",
+      "prompt": "Single dark grey Mars boulder sitting on rust-orange flat sandstone pavement, photoreal Perseverance Navcam color, isolated subject in the center, even hazy light, no rover, no people, no text, no watermark.",
+      "generatedAt": "2026-10-04T06:50:57.185Z"
+    },
+    {
+      "file": "boulder/candidate-02.png",
+      "category": "boulder",
+      "prompt": "Single dark grey Mars boulder sitting on rust-orange flat sandstone pavement, photoreal Perseverance Navcam color, isolated subject in the center, even hazy light, no rover, no people, no text, no watermark.",
+      "generatedAt": "2026-10-04T06:50:57.185Z"
+    }
+  ]
+}

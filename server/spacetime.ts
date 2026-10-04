@@ -5,6 +5,8 @@ import { missionContextId } from '../shared/envelope/concept';
 import { dataSourceWrites, missionContextWrite, solConditionWrites } from '../shared/envelope/persist';
 import type { Envelope } from '../shared/envelope/schema';
 import type { MissionContext } from '../shared/envelope/types';
+import type { LiveScenePlanWrite } from './liveAnalyze';
+import { LIVE_SCENE_ID, type LiveSceneRecord } from './liveScene';
 
 const URI = process.env.SPACETIMEDB_URI ?? 'ws://127.0.0.1:3000';
 const DB_NAME = process.env.SPACETIMEDB_DB_NAME ?? process.env.SPACETIMEDB_DB_ID ?? 'pranavtallapaka';
@@ -179,4 +181,80 @@ export async function persistAgentEvent(event: AgentEvent): Promise<void> {
     });
   }
   if (event.campaign) await persistCampaign(event.campaign);
+}
+
+export const ACTIVE_ENVELOPE_ROW = 'mission-control';
+
+export interface ActiveEnvelopeWrite {
+  envelopeKey: string;
+  envelopeId: string;
+  version: number;
+  label: string;
+  json: string;
+  contextId: string;
+}
+
+export async function persistActiveEnvelope(row: ActiveEnvelopeWrite): Promise<void> {
+  const conn = await getSpacetime();
+  await conn.reducers.setActiveEnvelope({
+    id: ACTIVE_ENVELOPE_ROW,
+    envelopeKey: row.envelopeKey,
+    envelopeId: row.envelopeId,
+    version: row.version,
+    label: row.label,
+    json: row.json,
+    contextId: row.contextId,
+    writtenAt: new Date().toISOString(),
+  });
+}
+
+export async function clearPersistedActiveEnvelope(): Promise<void> {
+  const conn = await getSpacetime();
+  await conn.reducers.clearActiveEnvelope({ id: ACTIVE_ENVELOPE_ROW });
+}
+
+export function disconnectSpacetime(): void {
+  connected?.disconnect();
+  connected = null;
+  connecting = null;
+}
+
+export async function persistLiveScene(row: LiveSceneRecord): Promise<void> {
+  const conn = await getSpacetime();
+  await conn.reducers.upsertLiveScene({
+    id: row.id || LIVE_SCENE_ID,
+    imageId: row.imageId,
+    sol: row.sol,
+    camera: row.camera,
+    utcDateTaken: row.utcDateTaken,
+    localMeanSolarTime: row.localMeanSolarTime,
+    daysAgo: row.daysAgo,
+    filePath: row.filePath,
+    nasaUrl: row.nasaUrl,
+    credit: row.credit,
+    isFallback: row.isFallback,
+    chosenWhy: row.chosenWhy,
+    lat: row.lat,
+    lon: row.lon,
+    waypointSol: row.waypointSol,
+    ingestedAt: row.ingestedAt,
+  });
+}
+
+export async function persistLiveScenePlan(row: LiveScenePlanWrite): Promise<void> {
+  const conn = await getSpacetime();
+  await conn.reducers.upsertLiveScenePlan({
+    id: row.id || LIVE_SCENE_ID,
+    imageId: row.imageId,
+    analysisJson: row.analysisJson,
+    planJson: row.planJson,
+    delayMin: row.delayMin,
+    rangeAu: row.rangeAu,
+    earthDate: row.earthDate,
+    validated: row.validated,
+    validationReasons: row.validationReasons,
+    compileSource: row.compileSource,
+    model: row.model,
+    writtenAt: row.writtenAt,
+  });
 }

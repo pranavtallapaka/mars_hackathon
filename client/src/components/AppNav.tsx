@@ -1,8 +1,11 @@
-export type AppView = 'landing' | 'control' | 'envelope';
+export type AppView = 'landing' | 'control' | 'envelope' | 'compare' | 'live';
 
 export function AppNav({ current }: { current: Exclude<AppView, 'landing'> }) {
   return (
     <nav className="app-nav" aria-label="Product pages">
+      <a href="#live" className={current === 'live' ? 'active' : undefined}>
+        Latest from Mars
+      </a>
       <a href="#control" className={current === 'control' ? 'active' : undefined}>
         Mission control
       </a>

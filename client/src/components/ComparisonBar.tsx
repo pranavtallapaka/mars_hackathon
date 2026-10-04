@@ -4,6 +4,7 @@ import type { Sim } from '../sim/sim';
 interface ComparisonBarProps {
   baseline: Sim;
   ours: Sim;
+  envelopeLabel?: string;
 }
 
 function finish(sim: Sim): string {
@@ -13,7 +14,7 @@ function finish(sim: Sim): string {
   return `done ${formatClock(completedAt)}${confirmedAt === null ? '' : ` · Earth knows ${formatClock(confirmedAt)}`}`;
 }
 
-export function ComparisonBar({ baseline, ours }: ComparisonBarProps) {
+export function ComparisonBar({ baseline, ours, envelopeLabel }: ComparisonBarProps) {
   const b = baseline.metrics;
   const o = ours.metrics;
   const bothDone = b.complete && o.complete;
@@ -40,6 +41,10 @@ export function ComparisonBar({ baseline, ours }: ComparisonBarProps) {
           </>
         ) : (
           <span className="muted">
+            {envelopeLabel
+              ? `Both sides fly the envelope policy (${envelopeLabel}). The difference is still contingency vs conventional.`
+              : null}
+            {envelopeLabel ? ' ' : null}
             {o.roundTrips === 0 ? 'Approve a plan to run both systems on the same clock.' : 'Running both systems on the same clock…'}
           </span>
         )}

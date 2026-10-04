@@ -16,3 +16,11 @@ data/reconstructions/_imagine-probe.jpg
 
 # ElevenLabs TTS clips; regenerated from the scripts in shared/voice.ts
 data/voice/
+
+# Daily NASA live-scene cache. Pinned fallback stays so ingest works offline.
+data/live/*
+!data/live/fallback/
+!data/live/fallback/**
+
+# One-off probe files; not part of the demo.
+data/tmp/

@@ -5,6 +5,8 @@ import type { TerrainId } from '../sim/types';
 interface BatchPanelProps {
   oneWayDelayMin: number;
   terrain: TerrainId;
+  plan?: unknown;
+  envelopeActive?: boolean;
 }
 
 function fmt(n: number, digits = 1): string {
@@ -39,7 +41,7 @@ function TripChart({ report }: { report: BatchReport }) {
   );
 }
 
-export function BatchPanel({ oneWayDelayMin, terrain }: BatchPanelProps) {
+export function BatchPanel({ oneWayDelayMin, terrain, plan, envelopeActive = false }: BatchPanelProps) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [report, setReport] = useState<BatchReport | null>(null);
@@ -50,7 +52,7 @@ export function BatchPanel({ oneWayDelayMin, terrain }: BatchPanelProps) {
     setError(null);
     setProgress(0);
     try {
-      const next = await runBatchAsync({ runs: BATCH_RUNS, oneWayDelayMin, terrain }, setProgress);
+      const next = await runBatchAsync({ runs: BATCH_RUNS, oneWayDelayMin, terrain, plan }, setProgress);
       setReport(next);
     } catch (err) {
       setError((err as Error).message);
@@ -65,7 +67,8 @@ export function BatchPanel({ oneWayDelayMin, terrain }: BatchPanelProps) {
         <div>
           <h3>Batch evidence</h3>
           <p className="muted small">
-            {BATCH_RUNS} seeded missions · cached plan · no LLM. Surprises the plan does not cover escalate.
+            {BATCH_RUNS} seeded missions · {envelopeActive ? 'envelope policy on the cached plan' : 'cached plan'} · no
+            LLM. Surprises the plan does not cover escalate.
           </p>
         </div>
         <button type="button" className="primary" disabled={busy} onClick={() => void run()}>

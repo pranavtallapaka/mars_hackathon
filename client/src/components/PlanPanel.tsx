@@ -43,13 +43,27 @@ export function PlanSteps({ plan, activeStepId = null }: { plan: Plan; activeSte
   );
 }
 
-export function PlanLimits({ plan }: { plan: Plan }) {
+export function PlanLimits({ plan, compiled }: { plan: Plan; compiled?: Plan }) {
   const { limits } = plan;
+  const floorChanged = compiled !== undefined && compiled.limits.batteryFloorPct !== limits.batteryFloorPct;
+  const escalateChanged = compiled !== undefined && compiled.escalateWhen.join() !== plan.escalateWhen.join();
   return (
     <dl className="limits">
-      <div><dt>Battery floor</dt><dd>{limits.batteryFloorPct}%</dd></div>
+      <div className={floorChanged ? 'from-envelope' : undefined}>
+        <dt>Battery floor{floorChanged ? ' · from envelope' : ''}</dt>
+        <dd>
+          {limits.batteryFloorPct}%
+          {floorChanged && <span className="was">compiler {compiled.limits.batteryFloorPct}%</span>}
+        </dd>
+      </div>
       <div><dt>No-go</dt><dd>{limits.noGoZones.join(', ') || 'none'}</dd></div>
-      <div><dt>Escalate when</dt><dd>{plan.escalateWhen.join(', ') || 'any surprise'}</dd></div>
+      <div className={escalateChanged ? 'from-envelope' : undefined}>
+        <dt>Escalate when{escalateChanged ? ' · from envelope' : ''}</dt>
+        <dd>
+          {plan.escalateWhen.join(', ') || 'any surprise'}
+          {escalateChanged && <span className="was">compiler {compiled.escalateWhen.join(', ')}</span>}
+        </dd>
+      </div>
       <div><dt>Abort means</dt><dd>{plan.abort.behavior} → {plan.abort.to}</dd></div>
       <div><dt>While waiting</dt><dd>{plan.whileWaiting.join(', ') || 'nothing'}</dd></div>
     </dl>
@@ -61,15 +75,17 @@ interface PlanPanelProps {
   plan: Plan;
   /** Step the rover was on, as of the last downlink. */
   knownStepId: string | null;
+  fromEnvelope?: boolean;
 }
 
-export function PlanPanel({ sim, plan, knownStepId }: PlanPanelProps) {
+export function PlanPanel({ sim, plan, knownStepId, fromEnvelope = false }: PlanPanelProps) {
   return (
     <div className="plan">
       <div className="plan-head">
         <h3>
           Current plan · {plan.planId} v{plan.version}
         </h3>
+        {fromEnvelope && <span className="chip source-grok">Envelope policy</span>}
       </div>
       <p className="intent">“{plan.intent}”</p>
       <ol className="uplinks">

@@ -8,6 +8,9 @@ import type { MissionConcept, MissionContext, SiteId, SolState } from '../../../
 import { AppNav } from './AppNav';
 import { AgentPanel } from './AgentPanel';
 import { CampaignPanel } from './CampaignPanel';
+import { EvidenceReport } from './EvidenceReport';
+import { FailureHeatMap } from './FailureHeatMap';
+import { RiskTimeline } from './RiskTimeline';
 
 const COMM_LABEL: Record<SolState['comm'], string> = {
   normal: 'normal',
@@ -19,10 +22,21 @@ function seasonLabel(s: string): string {
   return s.replace('northern_', 'NH ');
 }
 
+const STORAGE_KEY = 'envelope-concept';
+
+function loadSaved(): Partial<{ siteId: SiteId; startDate: string; sols: number }> {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
+}
+
 export function EnvelopePage() {
-  const [siteId, setSiteId] = useState<SiteId>(DEFAULT_CONCEPT.siteId);
-  const [startDate, setStartDate] = useState(DEFAULT_CONCEPT.startDate);
-  const [sols, setSols] = useState(DEFAULT_CONCEPT.sols);
+  const saved = loadSaved();
+  const [siteId, setSiteId] = useState<SiteId>(saved.siteId ?? DEFAULT_CONCEPT.siteId);
+  const [startDate, setStartDate] = useState(saved.startDate ?? DEFAULT_CONCEPT.startDate);
+  const [sols, setSols] = useState(saved.sols ?? DEFAULT_CONCEPT.sols);
   const [ctx, setCtx] = useState<MissionContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [persistError, setPersistError] = useState<string | null>(null);
@@ -39,6 +53,7 @@ export function EnvelopePage() {
     setLoading(true);
     try {
       const concept: MissionConcept = { siteId, startDate, sols };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ siteId, startDate, sols }));
       const result = await postMissionContext(concept);
       setCtx(result.context);
       if (!result.persisted) {
@@ -76,6 +91,12 @@ export function EnvelopePage() {
         <div>
           <h1>Autonomy envelope</h1>
           <p className="subtitle">Which decisions this rover can make alone, at this site, in this window.</p>
+          <p className="subtitle">
+            <a href="#live">Latest from Mars</a> — Perseverance’s last Navcam, read and planned.
+          </p>
+          <p className="print-only small">
+            {SITES[siteId].label} · {startDate} · {sols} sols · evidence-backed recommendation, not a certification.
+          </p>
         </div>
         <AppNav current="envelope" />
       </header>
@@ -173,13 +194,10 @@ export function EnvelopePage() {
             </table>
           </section>
 
-          <section className="envelope-sols">
-            <h2>Per-sol state</h2>
-            <p className="muted small">
-              {ctx?.site.label ?? SITES[siteId].label} · {displaySols[0]?.earthDate} to {displaySols.at(-1)?.earthDate} ·
-              delay {displaySols[0]?.delayMin}–{displaySols.reduce((m, s) => Math.max(m, s.delayMin), 0)} min
-              {fromSubscription ? ' · live subscription' : ''}
-            </p>
+          <RiskTimeline sols={displaySols} fromSubscription={fromSubscription} />
+
+          <details className="envelope-sol-details no-print">
+            <summary>Per-sol table</summary>
             <div className="sol-table-wrap">
               <table className="sol-table">
                 <thead>
@@ -208,7 +226,7 @@ export function EnvelopePage() {
                 </tbody>
               </table>
             </div>
-          </section>
+          </details>
 
           {ctx && (
             <section className="envelope-bench">
@@ -226,6 +244,10 @@ export function EnvelopePage() {
           )}
 
           <AgentPanel concept={{ siteId, startDate, sols }} contextId={contextId} />
+          <div className="envelope-results">
+            <FailureHeatMap contextId={contextId} siteId={siteId} />
+            <EvidenceReport contextId={contextId} siteId={siteId} startDate={startDate} sols={sols} />
+          </div>
           <CampaignPanel concept={{ siteId, startDate, sols }} contextId={contextId} />
         </>
       )}

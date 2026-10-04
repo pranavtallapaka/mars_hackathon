@@ -18,5 +18,5 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["client/src", "shared"]
+  "include": ["client/src", "shared", "data/live/fallback/scene.json", "data/live/fallback/analysis.json"]
 }

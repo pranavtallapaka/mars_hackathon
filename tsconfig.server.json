@@ -17,5 +17,5 @@
     "noEmit": true
   },
   "include": ["server", "shared", "vite.config.ts", "client/src/module_bindings", "client/src/sim"],
-  "exclude": ["client/src/sim/**/*.test.ts"]
+  "exclude": ["client/src/sim/**/*.test.ts", "server/**/*.test.ts"]
 }

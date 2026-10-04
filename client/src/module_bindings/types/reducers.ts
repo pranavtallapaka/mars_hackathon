@@ -6,21 +6,29 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ClearActiveEnvelopeReducer from "../clear_active_envelope_reducer";
 import ReplaceAgentLogsReducer from "../replace_agent_logs_reducer";
 import ReplaceFailuresReducer from "../replace_failures_reducer";
 import ReplaceSolConditionsReducer from "../replace_sol_conditions_reducer";
+import SetActiveEnvelopeReducer from "../set_active_envelope_reducer";
 import UpsertAgentJobReducer from "../upsert_agent_job_reducer";
 import UpsertCampaignResultReducer from "../upsert_campaign_result_reducer";
 import UpsertDataSourceReducer from "../upsert_data_source_reducer";
 import UpsertEnvelopeReducer from "../upsert_envelope_reducer";
+import UpsertLiveSceneReducer from "../upsert_live_scene_reducer";
+import UpsertLiveScenePlanReducer from "../upsert_live_scene_plan_reducer";
 import UpsertMissionContextReducer from "../upsert_mission_context_reducer";
 
+export type ClearActiveEnvelopeParams = __Infer<typeof ClearActiveEnvelopeReducer>;
 export type ReplaceAgentLogsParams = __Infer<typeof ReplaceAgentLogsReducer>;
 export type ReplaceFailuresParams = __Infer<typeof ReplaceFailuresReducer>;
 export type ReplaceSolConditionsParams = __Infer<typeof ReplaceSolConditionsReducer>;
+export type SetActiveEnvelopeParams = __Infer<typeof SetActiveEnvelopeReducer>;
 export type UpsertAgentJobParams = __Infer<typeof UpsertAgentJobReducer>;
 export type UpsertCampaignResultParams = __Infer<typeof UpsertCampaignResultReducer>;
 export type UpsertDataSourceParams = __Infer<typeof UpsertDataSourceReducer>;
 export type UpsertEnvelopeParams = __Infer<typeof UpsertEnvelopeReducer>;
+export type UpsertLiveSceneParams = __Infer<typeof UpsertLiveSceneReducer>;
+export type UpsertLiveScenePlanParams = __Infer<typeof UpsertLiveScenePlanReducer>;
 export type UpsertMissionContextParams = __Infer<typeof UpsertMissionContextReducer>;
 

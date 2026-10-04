@@ -10,6 +10,8 @@
     "dev:spacetime": "spacetime start --non-interactive --listen-addr 127.0.0.1:3000",
     "spacetime:publish": "spacetime publish pranavtallapaka --module-path ./spacetimedb --server local --yes",
     "spacetime:generate": "spacetime generate --lang typescript --out-dir client/src/module_bindings --module-path ./spacetimedb --yes",
+    "ingest:live-scene": "tsx scripts/ingest-live-scene.ts",
+    "analyze:live-scene": "tsx scripts/analyze-live-scene.ts",
     "build": "npm run typecheck && vite build",
     "typecheck": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.server.json",
     "test": "vitest run"

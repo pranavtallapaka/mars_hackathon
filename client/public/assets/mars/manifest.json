@@ -1,0 +1,142 @@
+{
+  "generatedAt": "2026-10-04T06:07:27.554Z",
+  "model": "grok-imagine-image",
+  "resolution": "1k",
+  "pricePerImageUsd": 0.02,
+  "estimatedCostUsd": 0.28,
+  "note": "Chosen files are sky.png, regolith.png, rocks.png, dust.png. Candidates remain in the category folders.",
+  "chosen": {
+    "sky": "sky/candidate-03.png",
+    "regolith": "regolith/candidate-01.png",
+    "rocks": "rocks/candidate-03.png",
+    "dust": "dust/candidate-01.png"
+  },
+  "assets": [
+    {
+      "file": "sky/candidate-01.png",
+      "category": "sky",
+      "prompt": "Wide photoreal Mars horizon backdrop, butterscotch dusty sky, pale orange-pink atmospheric haze near the horizon, low sun, empty rocky desert, no rover, no spacecraft, no people, no text, no watermark, cinematic landscape photograph.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "16:9",
+      "generatedAt": "2026-10-04T06:07:09.311Z"
+    },
+    {
+      "file": "sky/candidate-02.png",
+      "category": "sky",
+      "prompt": "Wide photoreal Mars horizon backdrop, butterscotch dusty sky, pale orange-pink atmospheric haze near the horizon, low sun, empty rocky desert, no rover, no spacecraft, no people, no text, no watermark, cinematic landscape photograph.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "16:9",
+      "generatedAt": "2026-10-04T06:07:09.311Z"
+    },
+    {
+      "file": "sky/candidate-03.png",
+      "category": "sky",
+      "prompt": "Wide photoreal Mars horizon backdrop, butterscotch dusty sky, pale orange-pink atmospheric haze near the horizon, low sun, empty rocky desert, no rover, no spacecraft, no people, no text, no watermark, cinematic landscape photograph.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "16:9",
+      "generatedAt": "2026-10-04T06:07:09.311Z"
+    },
+    {
+      "file": "sky/candidate-04.png",
+      "category": "sky",
+      "prompt": "Wide photoreal Mars horizon backdrop, butterscotch dusty sky, pale orange-pink atmospheric haze near the horizon, low sun, empty rocky desert, no rover, no spacecraft, no people, no text, no watermark, cinematic landscape photograph.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "16:9",
+      "generatedAt": "2026-10-04T06:07:09.311Z"
+    },
+    {
+      "file": "regolith/candidate-01.png",
+      "category": "regolith",
+      "prompt": "Seamless tileable top-down photograph of fine Mars regolith, rust-orange dust and sand grains, evenly lit studio lighting, no shadows, no horizon, no large rocks, no rover, no people, no text, repeating texture.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:15.068Z"
+    },
+    {
+      "file": "regolith/candidate-02.png",
+      "category": "regolith",
+      "prompt": "Seamless tileable top-down photograph of fine Mars regolith, rust-orange dust and sand grains, evenly lit studio lighting, no shadows, no horizon, no large rocks, no rover, no people, no text, repeating texture.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:15.068Z"
+    },
+    {
+      "file": "regolith/candidate-03.png",
+      "category": "regolith",
+      "prompt": "Seamless tileable top-down photograph of fine Mars regolith, rust-orange dust and sand grains, evenly lit studio lighting, no shadows, no horizon, no large rocks, no rover, no people, no text, repeating texture.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:15.068Z"
+    },
+    {
+      "file": "regolith/candidate-04.png",
+      "category": "regolith",
+      "prompt": "Seamless tileable top-down photograph of fine Mars regolith, rust-orange dust and sand grains, evenly lit studio lighting, no shadows, no horizon, no large rocks, no rover, no people, no text, repeating texture.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:15.068Z"
+    },
+    {
+      "file": "rocks/candidate-01.png",
+      "category": "rocks",
+      "prompt": "Seamless tileable top-down photograph of Mars rocks and pebbles on red soil, evenly lit studio lighting, no cast shadows, no horizon, no rover, no people, no text, repeating texture.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:22.269Z"
+    },
+    {
+      "file": "rocks/candidate-02.png",
+      "category": "rocks",
+      "prompt": "Seamless tileable top-down photograph of Mars rocks and pebbles on red soil, evenly lit studio lighting, no cast shadows, no horizon, no rover, no people, no text, repeating texture.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:22.269Z"
+    },
+    {
+      "file": "rocks/candidate-03.png",
+      "category": "rocks",
+      "prompt": "Seamless tileable top-down photograph of Mars rocks and pebbles on red soil, evenly lit studio lighting, no cast shadows, no horizon, no rover, no people, no text, repeating texture.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:22.269Z"
+    },
+    {
+      "file": "rocks/candidate-04.png",
+      "category": "rocks",
+      "prompt": "Seamless tileable top-down photograph of Mars rocks and pebbles on red soil, evenly lit studio lighting, no cast shadows, no horizon, no rover, no people, no text, repeating texture.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:22.269Z"
+    },
+    {
+      "file": "dust/candidate-01.png",
+      "category": "dust",
+      "prompt": "Soft Mars dust overlay texture, pale orange haze and fine airborne particles, evenly lit, no horizon, no rocks, no rover, no people, no text, usable as a translucent overlay.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:27.549Z"
+    },
+    {
+      "file": "dust/candidate-02.png",
+      "category": "dust",
+      "prompt": "Soft Mars dust overlay texture, pale orange haze and fine airborne particles, evenly lit, no horizon, no rocks, no rover, no people, no text, usable as a translucent overlay.",
+      "model": "grok-imagine-image",
+      "resolution": "1k",
+      "aspectRatio": "1:1",
+      "generatedAt": "2026-10-04T06:07:27.549Z"
+    }
+  ]
+}
